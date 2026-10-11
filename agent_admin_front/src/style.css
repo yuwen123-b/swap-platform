@@ -1,0 +1,45 @@
+:root {
+  --el-color-primary: #2f855a;
+  --el-color-primary-light-3: #5aa87f;
+  --el-color-primary-light-5: #86c1a3;
+  --el-color-primary-light-7: #b3d9c6;
+  --el-color-primary-light-8: #cce5d8;
+  --el-color-primary-light-9: #e5f2eb;
+  --el-color-primary-dark-2: #256a48;
+  --admin-warm: #f59e0b;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  font-family: 'HarmonyOS Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f4f7f5;
+}
+
+.page-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(47, 133, 90, 0.06);
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}

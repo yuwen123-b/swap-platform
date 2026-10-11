@@ -1,0 +1,723 @@
+/* ============================================================
+   绿换社区 · 设计系统
+   自然清新 + 社区温情 + 轻量科技感
+   ============================================================ */
+
+/* ---------- 设计令牌 ---------- */
+:root {
+  /* 自然底色 */
+  --bg-page: #faf9f6;
+  --bg-wash: radial-gradient(1100px 600px at 85% -10%, rgba(245, 158, 11, 0.1), transparent 60%),
+    radial-gradient(1000px 700px at -10% 15%, rgba(47, 133, 90, 0.12), transparent 55%),
+    radial-gradient(900px 600px at 50% 115%, rgba(15, 118, 110, 0.1), transparent 60%),
+    linear-gradient(180deg, #faf9f6 0%, #eef4ee 100%);
+
+  /* 主色：绿植绿 */
+  --green-primary: #2f855a;
+  --green-hover: #276749;
+  --green-active: #22543d;
+  --green-soft: #e6f4ec;
+  --green-softer: #f1f8f3;
+
+  /* 社区暖色：桃橙 */
+  --peach: #f59e0b;
+  --peach-deep: #b7791f;
+  --peach-soft: #fef3c7;
+
+  /* 轻量科技：青 */
+  --teal: #0f766e;
+  --teal-deep: #115e59;
+  --teal-soft: #e6f5f2;
+
+  /* 文字 */
+  --text-primary: #234236;
+  --text-secondary: #63786d;
+  --text-placeholder: #9aaa9f;
+
+  /* 线条与阴影 */
+  --border-soft: rgba(35, 66, 54, 0.1);
+  --border-card: rgba(35, 66, 54, 0.09);
+  --shadow-card: 0 3px 10px rgba(35, 66, 54, 0.04), 0 12px 28px rgba(35, 66, 54, 0.07);
+  --shadow-hover: 0 8px 18px rgba(35, 66, 54, 0.08), 0 18px 36px rgba(47, 133, 90, 0.14);
+  --shadow-btn: 0 7px 16px rgba(47, 133, 90, 0.24);
+
+  /* 兼容旧别名 */
+  --cyan: var(--teal);
+  --orange: var(--peach);
+  --muted: var(--text-secondary);
+  --line: var(--border-soft);
+
+  /* 禁用态中性底色 */
+  --bg-disabled: #f2f3ef;
+
+  /* 圆角 */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 12px;
+
+  /* 字体（系统栈，无外部依赖） */
+  --font-sans: "HarmonyOS Sans SC", "Source Han Sans SC", "Noto Sans CJK SC",
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+
+  /* ---------- Element Plus 变量对齐 ---------- */
+  --el-color-primary: var(--green-primary);
+  --el-color-primary-light-3: #5fa380;
+  --el-color-primary-light-5: #8dc2a5;
+  --el-color-primary-light-7: #bdddcb;
+  --el-color-primary-light-8: #d4eae0;
+  --el-color-primary-light-9: var(--green-soft);
+  --el-color-primary-dark-2: var(--green-active);
+  --el-border-radius-base: 10px;
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+  --el-fill-color-blank: #ffffff;
+  --el-bg-color: #ffffff;
+  --el-border-color: var(--border-soft);
+}
+
+/* ---------- 基础 ---------- */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-wash);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+/* ---------- 布局骨架 ---------- */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 0 6vw;
+  border-bottom: 1px solid var(--border-soft);
+  margin: 12px 2vw 0;
+  border: 1px solid rgba(35, 66, 54, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.brand {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  color: var(--text-primary);
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--green-primary), var(--teal));
+  color: #fff;
+}
+
+.brand-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cyan {
+  color: var(--green-primary);
+}
+
+nav.topnav {
+  display: flex;
+  gap: 30px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+nav.topnav a {
+  position: relative;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+
+nav.topnav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--green-primary), var(--teal));
+  transition: width 0.25s;
+}
+
+nav.topnav a.router-link-active,
+nav.topnav a:hover {
+  color: var(--green-primary);
+}
+
+nav.topnav a.router-link-active::after,
+nav.topnav a:hover::after {
+  width: 100%;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.signup {
+  border: 1px solid var(--green-primary);
+  padding: 9px 16px;
+  border-radius: 999px;
+  color: var(--green-primary);
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.signup:hover {
+  background: var(--green-primary);
+  color: #fff;
+}
+
+.user-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+main {
+  width: min(1180px, 88vw);
+  margin: 0 auto;
+  flex: 1;
+}
+
+footer.site-footer {
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 30px 6vw;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 70px;
+  text-align: center;
+}
+
+/* ---------- 页面通用 ---------- */
+.page {
+  padding: 64px 0;
+  position: relative;
+}
+
+.eyebrow {
+  color: var(--green-primary);
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.page-title {
+  font-size: clamp(32px, 4.6vw, 56px);
+  line-height: 1.12;
+  margin: 14px 0 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.page-title .gradient-text,
+.hero .gradient-text {
+  background: linear-gradient(90deg, var(--green-primary), var(--teal));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lead {
+  font-size: 17px;
+  color: var(--text-secondary);
+  line-height: 1.85;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.text-link {
+  color: var(--green-primary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: gap 0.2s;
+}
+
+.text-link:hover {
+  color: var(--green-hover);
+}
+
+/* ---------- 卡片 ---------- */
+.glass,
+.glass-card {
+  background: #fff;
+  border: 1px solid var(--border-card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.glass:hover,
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+.feature:hover,
+.item:hover,
+.el-card:hover {
+  border-color: rgba(47, 133, 90, 0.34) !important;
+}
+
+/* 图片 / 视觉占位：暖色浅渐变（禁止深色块） */
+.visual,
+.image {
+  background: linear-gradient(135deg, var(--green-softer), var(--teal-soft)) !important;
+  border-radius: var(--r-md) !important;
+}
+
+.avatar {
+  background: linear-gradient(135deg, var(--green-primary), var(--teal)) !important;
+  color: #fff !important;
+}
+
+/* 标签芯片 */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--green-soft);
+  color: var(--green-active);
+}
+
+.chip-peach {
+  background: var(--peach-soft);
+  color: var(--peach-deep);
+}
+
+.chip-teal {
+  background: var(--teal-soft);
+  color: var(--teal-deep);
+}
+
+/* ---------- Element Plus 组件微调 ---------- */
+.el-card {
+  background: #fff !important;
+  border: 1px solid var(--border-card) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: var(--shadow-card);
+}
+
+.el-button {
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.el-button--primary {
+  border: none;
+  background: linear-gradient(135deg, var(--green-primary), var(--teal));
+  box-shadow: var(--shadow-btn);
+  transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background: linear-gradient(135deg, var(--green-hover), var(--green-primary));
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(47, 133, 90, 0.34);
+  filter: brightness(1.03);
+}
+
+.el-button.is-plain,
+.el-button--default {
+  background: #fff;
+}
+
+.el-button--default:hover {
+  border-color: var(--green-primary);
+  color: var(--green-primary);
+  background: var(--green-softer);
+}
+
+.el-button--warning {
+  color: #744210;
+  border-color: var(--peach);
+  background: var(--peach-soft);
+}
+
+.el-input__wrapper,
+.el-textarea__inner {
+  background: #fff !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow: 0 0 0 1px rgba(35, 66, 54, 0.12) inset !important;
+  min-height: 42px;
+  transition: box-shadow 0.2s;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--green-primary) inset,
+    0 0 0 4px rgba(47, 133, 90, 0.12) !important;
+}
+
+.el-input__inner {
+  color: var(--text-primary);
+}
+
+.el-tabs__item {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.el-tabs__item.is-active,
+.el-tabs__item:hover {
+  color: var(--green-primary);
+}
+
+.el-tabs__active-bar {
+  background: linear-gradient(90deg, var(--green-primary), var(--teal));
+  height: 3px;
+  border-radius: 3px;
+}
+
+.el-radio-button__inner {
+  border-color: rgba(35, 66, 54, 0.12) !important;
+  color: var(--text-secondary);
+  background: #fff;
+}
+
+.el-radio-button__original-radio:checked + .el-radio-button__inner {
+  background: var(--green-primary);
+  border-color: var(--green-primary) !important;
+  box-shadow: -1px 0 0 0 var(--green-primary);
+  color: #fff;
+}
+
+.el-pagination {
+  --el-pagination-hover-color: var(--green-primary);
+}
+
+.el-empty__description p {
+  color: var(--text-secondary);
+}
+
+.el-rate {
+  --el-rate-fill-color: var(--peach);
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 800px) {
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    padding: 12px 5vw;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 8px 2vw 0;
+  }
+
+  .topbar nav.topnav {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .account {
+    gap: 10px;
+  }
+
+  main {
+    width: min(90vw, 600px);
+  }
+
+  .page {
+    padding: 42px 0;
+  }
+}
+
+/* ============================================================
+   全局无障碍 / 助老模式样式
+   class 同时挂在 <html> 与 .app-shell 上（见 store/profile.js），
+   这里统一以 html.mode-* 为作用域，保证弹窗、消息等全局元素也生效。
+   ============================================================ */
+
+/* ---------- 助老模式：字号加大、按钮加大、行距放宽 ---------- */
+html.mode-elderly body {
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+html.mode-elderly .topbar {
+  min-height: 80px;
+}
+
+html.mode-elderly nav.topnav {
+  font-size: 17px;
+  gap: 26px;
+}
+
+html.mode-elderly .account {
+  font-size: 16px;
+}
+
+html.mode-elderly .page-title,
+html.mode-elderly .hero h1 {
+  font-size: clamp(40px, 5.2vw, 64px);
+}
+
+html.mode-elderly .lead,
+html.mode-elderly p,
+html.mode-elderly li {
+  font-size: 18px;
+  line-height: 1.9;
+}
+
+html.mode-elderly .chip,
+html.mode-elderly .el-tag {
+  font-size: 14px;
+  padding: 7px 14px;
+}
+
+/* 点击目标统一加大到 48px 高 */
+html.mode-elderly .el-button {
+  min-height: 48px;
+  padding: 12px 26px;
+  font-size: 16px;
+  border-radius: 999px;
+}
+
+html.mode-elderly .el-input__wrapper,
+html.mode-elderly .el-textarea__inner {
+  min-height: 52px;
+  font-size: 16px;
+}
+
+html.mode-elderly .el-input__inner,
+html.mode-elderly .el-textarea__inner {
+  font-size: 16px;
+}
+
+html.mode-elderly .el-dialog {
+  font-size: 17px;
+}
+
+html.mode-elderly .el-dialog__title,
+html.mode-elderly h2,
+html.mode-elderly h3 {
+  font-size: 22px;
+}
+
+/* 悬浮按钮在助老模式下更大更易点 */
+html.mode-elderly .back-home {
+  width: 64px;
+  height: 64px;
+  font-size: 13px;
+}
+
+html.mode-elderly .back-home svg {
+  width: 24px;
+  height: 24px;
+}
+
+html.mode-elderly .voice-fab {
+  min-width: 84px;
+  padding: 14px 20px;
+  font-size: 16px;
+}
+
+/* ---------- 视障模式：强焦点环、链接下划线、语音优先可读 ---------- */
+html.mode-visual body {
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+html.mode-visual a,
+html.mode-visual button,
+html.mode-visual .el-button,
+html.mode-visual input,
+html.mode-visual textarea,
+html.mode-visual [role="button"],
+html.mode-visual [tabindex] {
+  outline-offset: 3px;
+}
+
+html.mode-visual a:focus-visible,
+html.mode-visual button:focus-visible,
+html.mode-visual .el-button:focus-visible,
+html.mode-visual input:focus-visible,
+html.mode-visual textarea:focus-visible,
+html.mode-visual [role="button"]:focus-visible,
+html.mode-visual [tabindex]:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+html.mode-visual nav.topnav a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* 视障 + 助老同时开启时进一步放大 */
+html.mode-visual.mode-elderly body {
+  font-size: 19px;
+}
+
+/* ---------- 肢体障碍模式：更大的点击区域、更宽松的间距 ---------- */
+html.mode-mobility .el-button,
+html.mode-mobility button,
+html.mode-mobility [role="button"] {
+  min-height: 44px;
+}
+
+html.mode-mobility nav.topnav a {
+  padding: 10px 4px;
+}
+
+html.mode-mobility .el-input__wrapper,
+html.mode-mobility .el-textarea__inner {
+  min-height: 48px;
+}
+
+html.mode-mobility .glass,
+html.mode-mobility .glass-card,
+html.mode-mobility .el-card {
+  padding: 4px;
+}
+
+/* ---------- 高对比度主题：黑底白字、加粗描边 ---------- */
+html.theme-high-contrast {
+  --text-primary: #ffffff;
+  --text-secondary: #f2f2f2;
+  --text-placeholder: #cfcfcf;
+  --border-soft: rgba(255, 255, 255, 0.55);
+  --border-card: rgba(255, 255, 255, 0.55);
+  --green-primary: #4ade80;
+  --green-hover: #86efac;
+  --green-active: #bbf7d0;
+  --green-soft: #0a2a16;
+  --green-softer: #102018;
+  --teal: #5eead4;
+  --teal-soft: #0a2622;
+  --peach: #fbbf24;
+  --peach-soft: #2a2108;
+  --peach-deep: #fde68a;
+  --el-bg-color: #000000;
+  --el-fill-color-blank: #000000;
+  --el-text-color-primary: #ffffff;
+  --el-text-color-regular: #f2f2f2;
+  --el-border-color: rgba(255, 255, 255, 0.55);
+}
+
+html.theme-high-contrast body {
+  background: #000000;
+  color: #ffffff;
+}
+
+html.theme-high-contrast .topbar,
+html.theme-high-contrast .glass,
+html.theme-high-contrast .glass-card,
+html.theme-high-contrast .el-card,
+html.theme-high-contrast .el-dialog,
+html.theme-high-contrast .el-message,
+html.theme-high-contrast .el-input__wrapper,
+html.theme-high-contrast .el-textarea__inner,
+html.theme-high-contrast .el-select__wrapper {
+  background: #000000 !important;
+  color: #ffffff;
+  border-color: #ffffff !important;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html.theme-high-contrast .el-input__inner,
+html.theme-high-contrast .el-textarea__inner,
+html.theme-high-contrast .el-dialog__title,
+html.theme-high-contrast .el-tabs__item,
+html.theme-high-contrast .el-radio,
+html.theme-high-contrast .el-checkbox {
+  color: #ffffff;
+}
+
+html.theme-high-contrast .chip {
+  background: #000000;
+  color: #4ade80;
+  border: 1px solid #4ade80;
+}
+
+html.theme-high-contrast .el-button--primary {
+  background: #4ade80;
+  color: #000000;
+  box-shadow: none;
+}
+
+html.theme-high-contrast .el-button--default,
+html.theme-high-contrast .el-button.is-plain {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+
+html.theme-high-contrast .signup,
+html.theme-high-contrast .profile-link {
+  color: #4ade80;
+  border-color: #4ade80;
+}
+
+/* 高对比度下助老按钮仍保持醒目 */
+html.theme-high-contrast .voice-fab {
+  background: #4ade80;
+  color: #000000;
+}
+

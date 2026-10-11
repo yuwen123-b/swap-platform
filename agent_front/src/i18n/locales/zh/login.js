@@ -1,0 +1,18 @@
+export default {
+  eyebrow:"欢迎回来",
+  title:"回到闲物焕新",
+  tabCode:"验证码登录",
+  tabPassword:"密码登录",
+  phone:"手机号",
+  email:"邮箱",
+  password:"密码",
+  codePlaceholder:"6 位验证码",
+  resendIn:"{seconds}s 后重发",
+  getCode:"获取验证码",
+  login:"登录",
+  noAccount:"还没有账号？",
+  registerLink:"注册新账号",
+  invalidAccount:"请输入正确的账号",
+  invalidCodeLogin:"请填写正确的账号和验证码",
+  invalidPasswordLogin:"请输入邮箱和密码",
+  debugCode:"开发验证码：{code}"}

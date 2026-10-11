@@ -1,0 +1,36 @@
+# ===== 依赖与虚拟环境 =====
+node_modules/
+.venv/
+venv/
+
+# ===== 构建产物 =====
+dist/
+build/
+*.egg-info/
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ===== 环境变量与密钥（绝不提交；.env.example 除外） =====
+.env
+!.env.example
+*.local
+
+# ===== 运行时数据 =====
+uploads/
+*.db
+*.sqlite3
+*.log
+
+# ===== IDE / 工具 =====
+.trae/
+.vscode/
+.idea/
+
+# ===== 系统文件 =====
+Thumbs.db
+.DS_Store
