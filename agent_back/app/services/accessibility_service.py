@@ -1,4 +1,8 @@
 """无障碍模式服务：模式设置、语音标签生成、用户无障碍档案。"""
+import json
+from pathlib import Path
+
+from app.core.config import settings
 from app.db.pool import connection
 from app.services import llm_client
 from app.utils.i18n import lang_name, normalize_lang
@@ -23,6 +27,13 @@ _CONDITION_TEXT_EN = {0: "brand new", 1: "90% new", 2: "80% new", 3: "gently use
 _VOICE_LABEL_PROMPT = (
     "根据物品信息生成一句{language}语音标签，格式为「物品名+成色+颜色+特征」，"
     "必须使用{language}输出，不超过 30 字，只输出标签本身，不要解释。\n"
+    "物品名：{title}\n描述：{description}"
+)
+
+# 语音标签提示词（多模态版）：图片与文本结合，颜色/成色优先依据图片判断
+_VOICE_LABEL_IMAGE_PROMPT = (
+    "根据物品图片与文字信息生成一句{language}语音标签，格式为「物品名+成色+颜色+特征」，"
+    "颜色与成色优先依据图片判断，必须使用{language}输出，不超过 30 字，只输出标签本身，不要解释。\n"
     "物品名：{title}\n描述：{description}"
 )
 
@@ -80,19 +91,48 @@ def get_profile(user_id: int) -> dict:
     }
 
 
-def generate_voice_label(item_id: int, language: str = "zh_CN") -> str:
-    """为物品生成语音标签「物品名+成色+颜色+特征」，按指定语言输出；LLM 失败时降级字段拼接。"""
-    lang = normalize_lang(language)
-    with connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(
-                "SELECT title, description, condition_level FROM item WHERE id=%s LIMIT 1",
-                (item_id,),
-            )
-            item = cursor.fetchone()
-    if not item:
-        raise ValueError("物品不存在")
+def _first_local_image(images_json: str | None) -> Path | None:
+    """解析物品图片 JSON，返回首图本地文件路径；无图、解析失败或文件不存在返回 None。
 
+    item.images 存储形如 ["/api/v1/static/items/xxx.jpg"]，去掉静态前缀即
+    uploads 下的相对路径（与 TTS / 物品图片同一挂载规则）；校验解析结果
+    必须落在 uploads 目录内，防路径穿越。
+    """
+    if not images_json:
+        return None
+    try:
+        urls = json.loads(images_json)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(urls, list) or not urls:
+        return None
+    prefix = f"{settings.api_prefix}/static/"
+    url = str(urls[0])
+    if not url.startswith(prefix):
+        return None
+    root = Path(settings.upload_dir).resolve()
+    path = (root / url[len(prefix):]).resolve()
+    if root not in path.parents or path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+        return None
+    return path if path.is_file() else None
+
+
+def _label_from_image(image_path: Path, item: dict, lang: str) -> str | None:
+    """多模态生成语音标签（qwen-vl 分析物品图片+文本）；失败返回 None。"""
+    prompt = _VOICE_LABEL_IMAGE_PROMPT.format(
+        language=lang_name(lang),
+        title=item["title"],
+        description=(item.get("description") or "")[:200],
+    )
+    try:
+        label = llm_client.describe_image(str(image_path), prompt).strip().strip("。").strip('"')
+        return label or None
+    except RuntimeError:
+        return None
+
+
+def _label_from_text(item: dict, lang: str) -> str | None:
+    """纯文本生成语音标签（无图或多模态失败时兜底）；失败返回 None。"""
     prompt = _VOICE_LABEL_PROMPT.format(
         language=lang_name(lang),
         title=item["title"],
@@ -100,12 +140,38 @@ def generate_voice_label(item_id: int, language: str = "zh_CN") -> str:
     )
     try:
         label = llm_client.chat_text([{"role": "user", "content": prompt}], timeout=30)
-        label = label.strip().strip("。")
-        if label and len(label) <= 40:
-            return label
+        return label.strip().strip("。") or None
     except RuntimeError:
-        pass
-    # 降级：直接拼接物品名与成色（按语言）
+        return None
+
+
+def generate_voice_label(item_id: int, language: str = "zh_CN") -> str:
+    """为物品生成语音标签「物品名+成色+颜色+特征」，按指定语言输出。
+
+    生成链路三级降级：qwen-vl 多模态分析物品首图（颜色/成色更准确）
+    → 纯文本生成 → 字段拼接，任何一级失败都不抛异常。
+    """
+    lang = normalize_lang(language)
+    with connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT title, description, condition_level, images FROM item WHERE id=%s LIMIT 1",
+                (item_id,),
+            )
+            item = cursor.fetchone()
+    if not item:
+        raise ValueError("物品不存在")
+
+    label = None
+    image_path = _first_local_image(item.get("images"))
+    if image_path:
+        label = _label_from_image(image_path, item, lang)
+    if not label:
+        label = _label_from_text(item, lang)
+    if label and len(label) <= 40:
+        return label
+
+    # 最终降级：直接拼接物品名与成色（按语言）
     if lang == "en_US":
         condition = _CONDITION_TEXT_EN.get(item.get("condition_level") or 0, "good condition")
         return f"{item['title']}, {condition}"

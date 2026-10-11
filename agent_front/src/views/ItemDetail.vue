@@ -23,6 +23,10 @@
           <div class="spinner" aria-hidden="true"></div>
           <p>{{ t('panorama.generating') }}</p>
         </div>
+        <!-- 轮询超时：停止轮询，仅提示稍后查看 -->
+        <div v-else-if="panoStatus === 'timeout'" class="pano-pending">
+          <p>{{ t('panorama.timeout') }}</p>
+        </div>
         <img v-else-if="firstImage" :src="firstImage" :alt="item.title" />
         <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 8V21H3V8"/>
@@ -109,25 +113,31 @@ const { t } = useI18n()
 const panoStatus = ref('none')
 const panoViews = ref({})
 let panoTimer = null
+let panoPollCount = 0
+const PANO_MAX_POLLS = 10
 
 async function loadPanorama() {
   try {
     const data = await getPanorama(route.params.id)
     panoStatus.value = data.status || 'none'
     panoViews.value = data.views || {}
-    // 生成中：每 3 秒轮询一次，直到 ready / failed
-    if (panoStatus.value === 'generating') {
-      panoTimer = setInterval(loadPanorama, 3000)
-    } else {
-      clearInterval(panoTimer)
-      panoTimer = null
-    }
   } catch {
     panoStatus.value = 'none'
   }
+  // 生成中：3 秒后重查，最多 10 次；超时停止轮询并提示稍后查看
+  if (panoStatus.value === 'generating') {
+    if (panoPollCount >= PANO_MAX_POLLS) {
+      panoStatus.value = 'timeout'
+      return
+    }
+    panoPollCount += 1
+    panoTimer = setTimeout(loadPanorama, 3000)
+  } else {
+    panoTimer = null
+  }
 }
 
-onBeforeUnmount(() => clearInterval(panoTimer))
+onBeforeUnmount(() => clearTimeout(panoTimer))
 
 /* ---------- 联系发布者 ---------- */
 const contactVisible = ref(false)
@@ -203,6 +213,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  panoPollCount = 0
   loadPanorama()
 })
 </script>

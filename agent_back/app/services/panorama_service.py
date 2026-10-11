@@ -6,7 +6,7 @@
 3. 全部失败时优雅降级为单图（panorama_status=failed），不阻断发布流程。
 
 结果存入 uploads/items/{item_id}/views/{front,left,back,right}.jpg，
-4 张图总大小 ≤ 2MB，超出判定失败。
+4 张图总大小 ≤ 2MB（PIL 自动压缩，无法压到上限内才判定失败）。
 """
 import json
 import logging
@@ -14,6 +14,8 @@ import shutil
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+
+from PIL import Image
 
 from app.core.config import settings
 from app.db.pool import connection
@@ -55,10 +57,40 @@ def _update_status(item_id: int, status: str, payload: dict | None = None) -> No
                 )
 
 
-def _check_total_size(views_dir: Path) -> None:
-    total = sum(p.stat().st_size for p in views_dir.glob("*.jpg"))
-    if total > MAX_TOTAL_BYTES:
-        raise RuntimeError(f"生成图片总大小 {total} 字节，超过 2MB 上限")
+def _total_size(files: list[Path]) -> int:
+    return sum(p.stat().st_size for p in files)
+
+
+def _compress_views(views_dir: Path, max_total: int = MAX_TOTAL_BYTES) -> None:
+    """PIL 压缩四视角图，确保总大小 ≤ max_total。
+
+    策略：已达标不重压缩（保画质）→ JPEG 质量逐级下降（85→70→55→40）
+    → 仍超限等比缩小到 768px。坏图或压缩后仍超限抛 RuntimeError（兜底失败）。
+    """
+    files = [views_dir / f"{name}.jpg" for name in VIEW_NAMES if (views_dir / f"{name}.jpg").exists()]
+    if _total_size(files) <= max_total:
+        return
+
+    def _resave(path: Path, quality: int, thumbnail: bool = False) -> None:
+        try:
+            with Image.open(path) as img:
+                img = img.convert("RGB")
+                if thumbnail:
+                    img.thumbnail((768, 768))
+                img.save(path, "JPEG", quality=quality, optimize=True)
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(f"视角图压缩失败 {path.name}: {exc}") from exc
+
+    for quality in (85, 70, 55, 40):
+        for path in files:
+            _resave(path, quality)
+        if _total_size(files) <= max_total:
+            return
+    # 最终兜底：等比缩小到 768px 内
+    for path in files:
+        _resave(path, 60, thumbnail=True)
+    if _total_size(files) > max_total:
+        raise RuntimeError(f"生成图片总大小 {_total_size(files)} 字节，压缩后仍超过 2MB 上限")
 
 
 def generate(item_id: int, source_image: Path) -> dict:
@@ -97,7 +129,7 @@ def generate(item_id: int, source_image: Path) -> dict:
             llm_client.download_file(result_url, views_dir / f"{name}.jpg")
             views[name] = _view_url(item_id, name)
 
-    _check_total_size(views_dir)
+    _compress_views(views_dir)
     payload = {
         "views": views,
         "fallback": fallback,

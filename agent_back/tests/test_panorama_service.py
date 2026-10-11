@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from conftest import FakeCursor, make_connection
+from PIL import Image
 
 from app.services import panorama_service
 
@@ -38,27 +39,69 @@ def test_get_views_ready_with_data(monkeypatch):
     assert result["fallback"] is True
 
 
-def test_generate_total_size_exceeds_limit(tmp_path, monkeypatch):
+def _noise_jpeg(path: Path, size: int = 1400) -> None:
+    """生成随机噪声 JPEG（随机像素几乎不可压缩，稳定产出大文件）。"""
+    img = Image.frombytes("RGB", (size, size), os.urandom(size * size * 3))
+    img.save(path, "JPEG", quality=95)
+
+
+def test_generate_compresses_oversize_views(tmp_path, monkeypatch):
+    """外推下载的四视角图总量超限时自动 PIL 压缩，最终 ready 且 ≤2MB。"""
     monkeypatch.setattr(
         "app.services.panorama_service.settings.public_base_url", "https://example.com"
     )
-    # 让 image_edit 成功并写一个大文件
-    def fake_edit(url, prompt):
-        return "https://example.com/img.jpg"
-
-    monkeypatch.setattr("app.services.panorama_service.llm_client.image_edit", fake_edit)
+    monkeypatch.setattr(
+        "app.services.panorama_service.settings.upload_dir", str(tmp_path / "uploads")
+    )
+    monkeypatch.setattr(
+        "app.services.panorama_service.llm_client.image_edit",
+        lambda url, prompt: "https://example.com/img.jpg",
+    )
 
     def fake_download(url, dest):
-        # 故意写超大文件触发上限
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(b"x" * (3 * 1024 * 1024))
+        _noise_jpeg(dest)
 
     monkeypatch.setattr("app.services.panorama_service.llm_client.download_file", fake_download)
     _patch_db(monkeypatch, [])
     source = tmp_path / "front.jpg"
-    source.write_bytes(b"fake")
-    with pytest.raises(RuntimeError, match="超过 2MB"):
-        panorama_service.generate(1, source)
+    _noise_jpeg(source, size=1000)
+
+    result = panorama_service.generate(1, source)
+
+    views_dir = tmp_path / "uploads" / "items" / "1" / "views"
+    files = list(views_dir.glob("*.jpg"))
+    assert result["status"] == "ready"
+    assert result["fallback"] is False
+    assert len(files) == 4
+    assert sum(p.stat().st_size for p in files) <= panorama_service.MAX_TOTAL_BYTES
+
+
+def test_compress_views_noop_under_limit(tmp_path):
+    """总大小已达标时不重压缩，文件字节保持不变。"""
+    views_dir = tmp_path / "views"
+    views_dir.mkdir()
+    original = {}
+    for name in panorama_service.VIEW_NAMES:
+        path = views_dir / f"{name}.jpg"
+        Image.new("RGB", (64, 64), color=(120, 40, 40)).save(path, "JPEG", quality=90)
+        original[name] = path.read_bytes()
+
+    panorama_service._compress_views(views_dir)
+
+    for name, data in original.items():
+        assert (views_dir / f"{name}.jpg").read_bytes() == data
+
+
+def test_compress_views_garbage_raises(tmp_path):
+    """坏图无法解析时抛 RuntimeError（保留超限失败兜底语义）。"""
+    views_dir = tmp_path / "views"
+    views_dir.mkdir()
+    for name in ("front", "left", "back"):
+        (views_dir / f"{name}.jpg").write_bytes(b"not-an-image" * 60000)  # 每张约 700KB
+
+    with pytest.raises(RuntimeError, match="压缩失败"):
+        panorama_service._compress_views(views_dir)
 
 
 def test_generate_async_starts_thread(monkeypatch, tmp_path):

@@ -42,3 +42,48 @@ def test_transcribe_calls_llm_client(monkeypatch, tmp_path):
     audio.write_bytes(b"fake")
     assert voice_service.transcribe(audio) == "我想换电饭煲"
     assert called["url"].endswith("/api/v1/static/voice/a.webm")
+
+
+def test_synthesize_disabled_without_key(monkeypatch):
+    """未配置大模型密钥时 TTS 降级：返回空 URL，不发起任何请求。"""
+    monkeypatch.setattr("app.services.voice_service.settings.llm_api_key", "")
+    called = {"n": 0}
+
+    def boom(*a, **k):
+        called["n"] += 1
+        return b"audio"
+
+    monkeypatch.setattr("app.services.voice_service.llm_client.synthesize_speech", boom)
+    assert voice_service.synthesize("找到电饭煲了") == ""
+    assert called["n"] == 0
+
+
+def test_synthesize_writes_file_and_downgrades(monkeypatch, tmp_path):
+    """合成成功落盘并返回静态 URL；合成失败时静默降级为空 URL。"""
+    monkeypatch.setattr("app.services.voice_service.settings.llm_api_key", "sk-test")
+    monkeypatch.setattr("app.services.voice_service.settings.upload_dir", str(tmp_path))
+    monkeypatch.setattr("app.services.voice_service.settings.api_prefix", "/api/v1")
+    monkeypatch.setattr(
+        "app.services.voice_service.llm_client.synthesize_speech",
+        lambda text, rate=1.0: b"fake-mp3-bytes",
+    )
+    url = voice_service.synthesize("找到电饭煲了", "zh_CN", rate=0.8)
+    assert url.startswith("/api/v1/static/tts/") and url.endswith(".mp3")
+    # 落盘文件存在，且第二次调用命中缓存不再请求
+    audio_file = tmp_path / "tts" / url.rsplit("/", 1)[-1]
+    assert audio_file.read_bytes() == b"fake-mp3-bytes"
+    calls = {"n": 0}
+
+    def counting(*a, **k):
+        calls["n"] += 1
+        return b"fake-mp3-bytes"
+
+    monkeypatch.setattr("app.services.voice_service.llm_client.synthesize_speech", counting)
+    voice_service.synthesize("找到电饭煲了", "zh_CN", rate=0.8)
+    assert calls["n"] == 0
+    # 合成失败：返回空串且不抛异常
+    def failing(*a, **k):
+        raise RuntimeError("TTS 服务不可用")
+
+    monkeypatch.setattr("app.services.voice_service.llm_client.synthesize_speech", failing)
+    assert voice_service.synthesize("另一段文本", "zh_CN", rate=0.8) == ""

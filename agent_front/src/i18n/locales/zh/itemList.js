@@ -37,6 +37,7 @@ export default {
   loginRequiredTip:"请先登录后再上传物品",
   fillRequiredTip:"请填写物品名称、描述、分类和联系方式",
   submitOk:"提交成功，等待审核通过后展示",
+  panoTip:"360° 效果生成中，完成后可在物品详情页查看",
   uploadFailedTip:"物品上传失败，请稍后重试",
   distanceLocal:"本社区",
   carbonLabel:"减碳 {value}kg",

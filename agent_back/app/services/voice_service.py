@@ -1,9 +1,12 @@
-"""语音服务：语音识别（ASR）与播报文本构造。
+"""语音服务：语音识别（ASR）、语音合成（TTS）与播报文本构造。
 
 - ASR：paraformer 文件转写，需要公网可达的文件 URL（settings.public_base_url），
   未配置时抛出 RuntimeError，由上层降级为文字输入；
-- TTS：由前端 Web Speech API 播报，本模块只负责按模式/语言给出播报文本、分句、语速与音色。
+- TTS：qwen-tts 同步合成（llm_client.synthesize_speech），音频落盘 uploads/tts/
+  并返回静态 URL；未配置密钥或合成失败时返回空串，前端降级 Web Speech API；
+- 播报文本：按模式/语言给出分句、语速与音色（助老模式语速 0.8、单句 ≤20 字）。
 """
+import hashlib
 import re
 from pathlib import Path
 
@@ -14,6 +17,32 @@ from app.services import llm_client
 ELDERLY_RATE = 0.8
 ELDERLY_MAX_LEN = 20
 NORMAL_RATE = 1.0
+
+# TTS 音频存储目录（位于 uploads/ 下，经 /api/v1/static 挂载对外）
+TTS_DIR_NAME = "tts"
+
+
+def synthesize(text: str, lang: str = "zh_CN", rate: float = 1.0) -> str:
+    """语音合成：生成回复音频文件并返回静态 URL；任何失败降级为空串（不阻断助老闭环）。
+
+    - 文件按 (lang, rate, text) 摘要命名，同文本命中缓存不重复合成；
+    - rate 仅参与缓存键（qwen-tts 不支持语速参数，慢语速由前端浏览器兜底播报保障）；
+    - 返回相对路径（如 /api/v1/static/tts/xxx.mp3），与物品图片 URL 同一挂载规则。
+    """
+    text = (text or "").strip()
+    if not text or not settings.llm_api_key:
+        return ""
+    filename = hashlib.md5(f"{lang}|{rate}|{text}".encode("utf-8")).hexdigest() + ".mp3"
+    audio_path = Path(settings.upload_dir) / TTS_DIR_NAME / filename
+    if not audio_path.exists():
+        try:
+            audio = llm_client.synthesize_speech(text)
+            audio_path.parent.mkdir(parents=True, exist_ok=True)
+            audio_path.write_bytes(audio)
+        except Exception:  # TTS 属增强能力：未开通/网络失败等一律静默降级
+            return ""
+    return f"{settings.api_prefix}/static/{TTS_DIR_NAME}/{filename}"
+
 
 # 前端 Web Speech API 的语音语种（按用户语言选择）
 VOICE_BY_LANG = {"zh_CN": "zh-CN", "en_US": "en-US"}

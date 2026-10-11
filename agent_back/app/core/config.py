@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     llm_image_edit_model: str = "wanx2.1-imageedit"
     llm_image_gen_model: str = "wanx2.1-t2i-turbo"
     llm_asr_model: str = "paraformer-v2"
+    # 语音合成（qwen3-tts-flash 同步 HTTP 接口；合成失败或未配置密钥时自动降级为前端 Web Speech API）
+    llm_tts_model: str = "qwen3-tts-flash"
+    llm_tts_voice: str = "Cherry"
     # 后端公网访问地址（图像编辑、语音识别需向 DashScope 提供公网可达的文件 URL，留空则相关能力自动降级）
     public_base_url: str = ""
     # 企业微信机器人 Webhook（留空时推送降级为日志打印，不阻断流程）

@@ -52,8 +52,23 @@ const errorTip = ref('')
 
 const userId = () => userStore.user?.id || 0
 
-// 语音播报：Web Speech API，按后端返回的分句/语速/音色
-function speak(speech) {
+// 语音播报：优先播放后端 TTS 音频（response_audio_url），失败降级 Web Speech API
+function speak(speech, audioUrl) {
+  if (audioUrl) {
+    try {
+      const player = new Audio(audioUrl)
+      player.addEventListener('error', () => speakWithBrowser(speech), { once: true })
+      player.play().catch(() => speakWithBrowser(speech))
+      return
+    } catch {
+      // Audio 构造失败：降级浏览器合成
+    }
+  }
+  speakWithBrowser(speech)
+}
+
+// 浏览器合成兜底：按后端返回的分句/语速/音色播报
+function speakWithBrowser(speech) {
   if (!speech || !window.speechSynthesis) return
   window.speechSynthesis.cancel()
   const sentences = speech.sentences?.length ? speech.sentences : [speech.text]
@@ -72,7 +87,7 @@ async function send(formData) {
     heardText.value = data.action_result?.heard_text || ''
     replyText.value = data.response_text || ''
     card.value = data.action_result?.card || null
-    speak(data.action_result?.speech)
+    speak(data.action_result?.speech, data.response_audio_url)
     const action = data.action_result?.action
     if (action?.type === 'navigate' && action.path) router.push(action.path)
   } catch (err) {

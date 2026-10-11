@@ -27,6 +27,8 @@ class ElderlyActionResult(BaseModel):
 
 class ElderlyInteractResponse(BaseModel):
     intent: str
+    # 意图实体（如 keyword=老人想找的物品名），供前端/上层业务扩展使用
+    entities: dict = Field(default_factory=dict)
     response_text: str
     response_audio_url: str = ""
     action_result: ElderlyActionResult

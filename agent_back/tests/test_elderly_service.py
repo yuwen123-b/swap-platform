@@ -1,7 +1,14 @@
 """elderly_service 单元测试（数据库与 LLM 全部 mock）。"""
+import pytest
 from conftest import FakeCursor, make_connection
 
 from app.services import elderly_service
+
+
+@pytest.fixture(autouse=True)
+def _mock_tts(monkeypatch):
+    """默认关闭 TTS：单测不触达外部合成服务，response_audio_url 固定为空。"""
+    monkeypatch.setattr("app.services.voice_service.synthesize", lambda *a, **k: "")
 
 
 def _patch_db(monkeypatch, rows):
@@ -118,3 +125,47 @@ def test_intent_prompt_contains_language_instruction():
     rendered = ELDERLY_INTENT_PROMPT.format(text="我想换电饭煲", language="中文")
     assert "中文" in rendered
     assert '"intent"' in rendered
+
+
+def test_response_contains_entities(monkeypatch):
+    """响应必须包含 entities 实体（keyword 透传，intent 不重复出现）。"""
+    _patch_db(monkeypatch, [{"id": 7, "title": "美的电饭煲"}])
+    _patch_profile_lang(monkeypatch)
+    monkeypatch.setattr(
+        "app.services.elderly_service.llm_client.understand_intent",
+        lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "电饭煲"},
+    )
+    result = elderly_service.interact(None, user_id=1, text="我想换电饭煲")
+    assert result["entities"] == {"keyword": "电饭煲"}
+
+
+def test_tts_audio_url_returned(monkeypatch):
+    """已配置 TTS 时，响应的 response_audio_url 应为后端合成的静态音频地址。"""
+    _patch_db(monkeypatch, [{"id": 7, "title": "美的电饭煲"}])
+    _patch_profile_lang(monkeypatch)
+    monkeypatch.setattr(
+        "app.services.elderly_service.llm_client.understand_intent",
+        lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "电饭煲"},
+    )
+    monkeypatch.setattr(
+        "app.services.voice_service.synthesize",
+        lambda text, lang, rate: "/api/v1/static/tts/abc123.mp3",
+    )
+    result = elderly_service.interact(None, user_id=1, text="我想换电饭煲")
+    assert result["response_audio_url"] == "/api/v1/static/tts/abc123.mp3"
+    assert result["action_result"]["card"]["status"] == "ok"
+
+
+def test_tts_unavailable_falls_back_to_empty_url(monkeypatch):
+    """TTS 不可用（返回空串）时闭环不中断：response_audio_url 为空，文本回复正常。"""
+    _patch_db(monkeypatch, [{"id": 7, "title": "美的电饭煲"}])
+    _patch_profile_lang(monkeypatch)
+    monkeypatch.setattr(
+        "app.services.elderly_service.llm_client.understand_intent",
+        lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "电饭煲"},
+    )
+    monkeypatch.setattr("app.services.voice_service.synthesize", lambda *a, **k: "")
+    result = elderly_service.interact(None, user_id=1, text="我想换电饭煲")
+    assert result["response_audio_url"] == ""
+    assert "美的电饭煲" in result["response_text"]
+    assert result["action_result"]["speech"]["rate"] == 0.8

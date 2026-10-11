@@ -187,6 +187,41 @@ def text_to_image(prompt: str, size: str = "1024*1024") -> str:
     return _extract_result_url(output)
 
 
+def synthesize_speech(text: str) -> bytes:
+    """语音合成（qwen3-tts-flash 同步 HTTP 接口），返回音频二进制。
+
+    请求体仅含 model 与 input{text, voice}；接口以 JSON 返回临时音频 URL（24 小时
+    有效），需二次下载。失败统一抛 RuntimeError。
+    """
+    _require_key()
+    if not (text or "").strip():
+        raise RuntimeError("语音合成文本为空")
+    payload = {
+        "model": settings.llm_tts_model,
+        "input": {"text": text, "voice": settings.llm_tts_voice},
+    }
+    try:
+        resp = requests.post(f"{NATIVE_BASE}/services/aigc/multimodal-generation/generation",
+                             headers=_headers(), json=payload, timeout=60)
+    except requests.RequestException as exc:
+        raise RuntimeError(f"语音合成请求失败：{exc}") from exc
+    if resp.status_code >= 400:
+        raise RuntimeError(f"语音合成失败 HTTP {resp.status_code}: {resp.text[:300]}")
+    audio_url = (resp.json().get("output", {}).get("audio", {}) or {}).get("url")
+    if not audio_url:
+        raise RuntimeError(f"语音合成响应缺少音频 URL：{resp.text[:300]}")
+    # 结果音频存放在阿里云 OSS，需下载到本地
+    try:
+        audio_resp = requests.get(audio_url, timeout=30)
+    except requests.RequestException as exc:
+        raise RuntimeError(f"合成音频下载失败：{exc}") from exc
+    if audio_resp.status_code >= 400:
+        raise RuntimeError(f"合成音频下载失败 HTTP {audio_resp.status_code}")
+    if not audio_resp.content:
+        raise RuntimeError("语音合成返回空音频")
+    return audio_resp.content
+
+
 def transcribe_audio(file_url: str) -> str:
     """语音识别（paraformer 文件转写），file_url 需公网可达，返回识别文本。"""
     payload = {

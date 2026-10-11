@@ -381,6 +381,7 @@ async function submitUpload() {
     await uploadItem(formData)
     // 提交后进入待审核（status=4），审核通过前不出现在列表中，故不刷新列表
     ElMessage.success(t('itemList.submitOk'))
+    ElMessage.info(t('itemList.panoTip'))
     uploadVisible.value = false
     resetUploadForm()
   } catch (error) {
