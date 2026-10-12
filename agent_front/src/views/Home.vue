@@ -138,6 +138,7 @@
                     @error="onImgError"
                   />
                   <span class="tag-condition">{{ conditionText(item.conditionLevel) }}</span>
+                  <span v-if="item.panoramaStatus === 'ready'" class="badge-360">360°</span>
                 </div>
                 <div class="item-body">
                   <h3 class="item-name">{{ item.title }}</h3>
@@ -330,6 +331,7 @@ function normalize(item) {
     conditionLevel: item.condition_level,
     modeCode: item.exchange_mode,
     carbon: Number(item.carbon_value || 0),
+    panoramaStatus: item.panorama_status,
   }
 }
 
@@ -864,6 +866,18 @@ function runCountUp() {
   color: var(--c-deep);
   font-size: 12px;
   font-weight: 600;
+}
+
+.badge-360 {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(47, 133, 90, 0.75);
 }
 
 .item-body {

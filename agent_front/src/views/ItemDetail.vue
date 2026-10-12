@@ -12,21 +12,19 @@
 
     <div v-if="item" class="detail">
       <div class="visual">
-        <!-- 360° 已就绪：嵌入可拖拽查看器 -->
+        <!-- 360° 已就绪：Three.js 查看器 -->
         <PanoramaViewer
-          v-if="panoStatus === 'ready' && panoViews.front"
-          :views="panoViews"
+          v-if="item.panorama_status === 'ready' && item.panorama_views"
+          :views="item.panorama_views"
           :original-image="firstImage"
+          @error="onPanoError"
         />
-        <!-- 生成中：占位 + loading 动画，不阻塞页面其余部分 -->
-        <div v-else-if="panoStatus === 'generating'" class="pano-pending">
-          <div class="spinner" aria-hidden="true"></div>
-          <p>{{ t('panorama.generating') }}</p>
+        <!-- 生成中：原图 + 角标 -->
+        <div v-else-if="item.panorama_status === 'generating'" class="image-wrapper">
+          <img v-if="firstImage" :src="firstImage" :alt="item.title" />
+          <div class="badge-generating">{{ t('panorama.badgeGenerating') }}</div>
         </div>
-        <!-- 轮询超时：停止轮询，仅提示稍后查看 -->
-        <div v-else-if="panoStatus === 'timeout'" class="pano-pending">
-          <p>{{ t('panorama.timeout') }}</p>
-        </div>
+        <!-- 无 360° 或生成失败：静态图 -->
         <img v-else-if="firstImage" :src="firstImage" :alt="item.title" />
         <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 8V21H3V8"/>
@@ -110,30 +108,33 @@ const loading = ref(true)
 const { t } = useI18n()
 
 /* ---------- 360° 视图 ---------- */
-const panoStatus = ref('none')
-const panoViews = ref({})
 let panoTimer = null
 let panoPollCount = 0
-const PANO_MAX_POLLS = 10
+const PANO_MAX_POLLS = 20
 
 async function loadPanorama() {
   try {
     const data = await getPanorama(route.params.id)
-    panoStatus.value = data.status || 'none'
-    panoViews.value = data.views || {}
-  } catch {
-    panoStatus.value = 'none'
-  }
-  // 生成中：3 秒后重查，最多 10 次；超时停止轮询并提示稍后查看
-  if (panoStatus.value === 'generating') {
-    if (panoPollCount >= PANO_MAX_POLLS) {
-      panoStatus.value = 'timeout'
-      return
+    if (item.value) {
+      item.value.panorama_status = data.panorama_status || 'none'
+      item.value.panorama_views = data.panorama_views || null
     }
+  } catch {
+    // 保持现有状态，不影响页面展示
+  }
+  // 生成中：3 秒后重查，最多 20 次（约 1 分钟）
+  if (item.value?.panorama_status === 'generating') {
+    if (panoPollCount >= PANO_MAX_POLLS) return
     panoPollCount += 1
     panoTimer = setTimeout(loadPanorama, 3000)
-  } else {
-    panoTimer = null
+  }
+}
+
+function onPanoError() {
+  // Three.js 初始化或贴图全部失败：静默降级为静态图
+  if (item.value) {
+    item.value.panorama_status = 'failed'
+    item.value.panorama_views = null
   }
 }
 
@@ -236,6 +237,7 @@ onMounted(async () => {
 }
 
 .visual {
+  position: relative;
   height: 430px;
   display: grid;
   place-items: center;
@@ -251,27 +253,29 @@ onMounted(async () => {
   opacity: 0.5;
 }
 
-/* 360° 生成中占位：loading 动画 + 提示，不阻塞页面 */
-.pano-pending {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  color: var(--green-primary);
-  font-size: 15px;
+/* 360° 生成中：原图 + 角标 */
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(47, 133, 90, 0.2);
-  border-top-color: var(--green-primary);
-  border-radius: 50%;
-  animation: pano-spin 0.9s linear infinite;
+.image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-@keyframes pano-spin {
-  to { transform: rotate(360deg); }
+.badge-generating {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(47, 133, 90, 0.7);
 }
 
 .visual .pano-viewer {

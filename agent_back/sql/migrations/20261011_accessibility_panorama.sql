@@ -10,8 +10,9 @@ ALTER TABLE `user` ADD COLUMN `accessibility_mode` VARCHAR(30) NOT NULL DEFAULT 
 ALTER TABLE `user` ADD COLUMN `preferred_lang` VARCHAR(10) NOT NULL DEFAULT 'zh_CN' COMMENT '界面语言：zh_CN/en_US';
 
 -- 二、item 表：360° 四视角
-ALTER TABLE `item` ADD COLUMN `panorama_views` TEXT NULL COMMENT '360° 四视角图路径（JSON）';
+ALTER TABLE `item` ADD COLUMN `panorama_views` TEXT NULL COMMENT 'JSON字符串，4张视角图URL';
 ALTER TABLE `item` ADD COLUMN `panorama_status` VARCHAR(20) NOT NULL DEFAULT 'none' COMMENT 'none/generating/ready/failed';
+ALTER TABLE `item` ADD COLUMN `panorama_generated_at` DATETIME NULL COMMENT '360° 生成完成时间';
 
 -- 三、volunteer_task 表：志愿者代取任务
 CREATE TABLE IF NOT EXISTS `volunteer_task` (

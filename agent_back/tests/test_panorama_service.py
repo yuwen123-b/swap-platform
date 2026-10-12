@@ -23,19 +23,19 @@ def test_get_views_not_exists(monkeypatch):
 
 
 def test_get_views_none_status(monkeypatch):
-    _patch_db(monkeypatch, [{"panorama_status": "none", "panorama_views": None}])
+    _patch_db(monkeypatch, [{"panorama_status": "none", "panorama_views": None, "panorama_generated_at": None}])
     result = panorama_service.get_views(1)
-    assert result["status"] == "none"
-    assert result["views"] == {}
+    assert result["panorama_status"] == "none"
+    assert result["panorama_views"] is None
     assert result["fallback"] is False
 
 
 def test_get_views_ready_with_data(monkeypatch):
     payload = json.dumps({"views": {"front": "/f.jpg"}, "fallback": True, "generated_at": "2026-10-11T00:00:00+00:00"})
-    _patch_db(monkeypatch, [{"panorama_status": "ready", "panorama_views": payload}])
+    _patch_db(monkeypatch, [{"panorama_status": "ready", "panorama_views": payload, "panorama_generated_at": None}])
     result = panorama_service.get_views(1)
-    assert result["status"] == "ready"
-    assert result["views"]["front"] == "/f.jpg"
+    assert result["panorama_status"] == "ready"
+    assert result["panorama_views"]["front"] == "/f.jpg"
     assert result["fallback"] is True
 
 
@@ -46,7 +46,7 @@ def _noise_jpeg(path: Path, size: int = 1400) -> None:
 
 
 def test_generate_compresses_oversize_views(tmp_path, monkeypatch):
-    """外推下载的四视角图总量超限时自动 PIL 压缩，最终 ready 且 ≤2MB。"""
+    """外推下载的四视角图每张超 500KB 时自动 PIL 压缩，最终每张 ≤500KB。"""
     monkeypatch.setattr(
         "app.services.panorama_service.settings.public_base_url", "https://example.com"
     )
@@ -74,11 +74,13 @@ def test_generate_compresses_oversize_views(tmp_path, monkeypatch):
     assert result["status"] == "ready"
     assert result["fallback"] is False
     assert len(files) == 4
-    assert sum(p.stat().st_size for p in files) <= panorama_service.MAX_TOTAL_BYTES
+    # 每张视角图 ≤ 500KB
+    for p in files:
+        assert p.stat().st_size <= panorama_service.MAX_FILE_BYTES
 
 
 def test_compress_views_noop_under_limit(tmp_path):
-    """总大小已达标时不重压缩，文件字节保持不变。"""
+    """每张已达标时不重压缩，文件字节保持不变。"""
     views_dir = tmp_path / "views"
     views_dir.mkdir()
     original = {}
@@ -104,17 +106,34 @@ def test_compress_views_garbage_raises(tmp_path):
         panorama_service._compress_views(views_dir)
 
 
-def test_generate_async_starts_thread(monkeypatch, tmp_path):
-    called = {}
-    monkeypatch.setattr(
-        "app.services.panorama_service.settings.public_base_url", ""
-    )
+def test_run_generate_success(monkeypatch, tmp_path):
+    """run_generate 成功路径：先置 generating，generate 不抛异常即结束。"""
+    cursor = FakeCursor(rows=[])
+    monkeypatch.setattr("app.services.panorama_service.connection", make_connection(cursor))
     monkeypatch.setattr(
         "app.services.panorama_service.generate",
-        lambda item_id, source_image: called.setdefault("sync", (item_id, source_image)),
+        lambda item_id, source_image: {"status": "ready"},
     )
     front = tmp_path / "front.jpg"
     front.write_bytes(b"fake")
-    panorama_service.generate_async(2, front)
-    assert os.path.exists(front)
-    # generate_async 启动线程，这里只验证不抛异常即可；非阻塞测试中不等待线程
+    panorama_service.run_generate(1, front)
+
+    # 成功路径：仅 generating 状态写入（ready 由 generate 内部写入，此处被 mock）
+    assert len(cursor.executed) == 1
+    assert "generating" in str(cursor.executed[0])
+
+
+def test_run_generate_failure(monkeypatch, tmp_path):
+    """run_generate 失败路径：先置 generating，generate 抛异常后置 failed。"""
+    cursor = FakeCursor(rows=[])
+    monkeypatch.setattr("app.services.panorama_service.connection", make_connection(cursor))
+    monkeypatch.setattr(
+        "app.services.panorama_service.generate",
+        lambda item_id, source_image: (_ for _ in ()).throw(RuntimeError("API 不可用")),
+    )
+    front = tmp_path / "front.jpg"
+    front.write_bytes(b"fake")
+    panorama_service.run_generate(1, front)
+
+    assert "generating" in str(cursor.executed[0])
+    assert "failed" in str(cursor.executed[1])

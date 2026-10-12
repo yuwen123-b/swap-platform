@@ -2,7 +2,7 @@ import json
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile
 
 from app.core.config import settings
 from app.core.response import success
@@ -64,6 +64,9 @@ def list_items(page: int = Query(1, ge=1), size: int = Query(12, ge=1, le=100), 
                 params + [size, offset],
             )
             items = cursor.fetchall()
+    # 列表不透出 panorama_views 大 JSON（仅保留 panorama_status 供卡片 360° 角标）
+    for it in items:
+        it["panorama_views"] = None
     # 英文模式：并发翻译标题与描述（内部带缓存）
     lang = translation_service.normalize_request_lang(accept_language)
     if items and lang == "en":
@@ -82,6 +85,16 @@ def get_item(item_id: int, accept_language: str = Header(default="zh")):
             item = cursor.fetchone()
     if not item:
         raise HTTPException(404, "物品不存在")
+    # 360° 字段整形：仅 ready 时透出视角图 dict，其余状态置 None（坏 JSON 静默降级）
+    raw_views = item.get("panorama_views")
+    item["panorama_views"] = None
+    if item.get("panorama_status") == "ready" and raw_views:
+        try:
+            views = json.loads(raw_views).get("views")
+            if isinstance(views, dict) and views:
+                item["panorama_views"] = views
+        except (TypeError, ValueError):
+            pass
     lang = translation_service.normalize_request_lang(accept_language)
     if lang == "en":
         item["title"] = translation_service.translate_text(item["title"], "en")
@@ -91,6 +104,7 @@ def get_item(item_id: int, accept_language: str = Header(default="zh")):
 
 @router.post("")
 def create_item(
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
     description: str = Form(...),
     category_id: int = Form(...),
@@ -143,11 +157,11 @@ def create_item(
             )
             item_id = cursor.lastrowid
 
-    # 360° 视图生成：后台线程执行，任何失败都不阻断发布（惰性 import 避免循环依赖）
+    # 360° 视图生成：BackgroundTasks 后台执行，不阻断发布（惰性 import 避免循环依赖）
     if image_path is not None:
         try:
             from app.services import panorama_service
-            panorama_service.generate_async(item_id, image_path)
+            background_tasks.add_task(panorama_service.run_generate, item_id, image_path)
         except Exception:  # noqa: BLE001
             pass
     return success({"id": item_id, "status": 4}, "提交成功，等待审核")

@@ -96,6 +96,8 @@ def ensure_accessibility_columns() -> None:
                            "panorama_views TEXT NULL COMMENT '360° 四视角图路径（JSON）'")
             _ensure_column(cursor, "item", "panorama_status",
                            "panorama_status VARCHAR(20) NOT NULL DEFAULT 'none' COMMENT 'none/generating/ready/failed'")
+            _ensure_column(cursor, "item", "panorama_generated_at",
+                           "panorama_generated_at DATETIME NULL COMMENT '360° 生成完成时间'")
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS `volunteer_task` (
                        `id` BIGINT NOT NULL AUTO_INCREMENT,

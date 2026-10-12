@@ -6,12 +6,12 @@
 3. 全部失败时优雅降级为单图（panorama_status=failed），不阻断发布流程。
 
 结果存入 uploads/items/{item_id}/views/{front,left,back,right}.jpg，
-4 张图总大小 ≤ 2MB（PIL 自动压缩，无法压到上限内才判定失败）。
+每张图压缩至 ≤ 500KB（PIL 质量阶梯），4 张总量因此 ≤ 2MB。
+异步由路由层 BackgroundTasks 调度 run_generate（不引入 Celery）。
 """
 import json
 import logging
 import shutil
-import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,7 +24,7 @@ from app.services import llm_client
 logger = logging.getLogger(__name__)
 
 VIEW_NAMES = ("front", "left", "back", "right")
-MAX_TOTAL_BYTES = 2 * 1024 * 1024
+MAX_FILE_BYTES = 500 * 1024  # 单张视角图大小上限
 
 # 各视角的生成提示词
 _VIEW_PROMPT = {
@@ -51,26 +51,20 @@ def _update_status(item_id: int, status: str, payload: dict | None = None) -> No
             if payload is None:
                 cursor.execute("UPDATE item SET panorama_status=%s WHERE id=%s", (status, item_id))
             else:
+                # ready 时同步回写生成完成时间（独立列，供接口直接读取）
                 cursor.execute(
-                    "UPDATE item SET panorama_status=%s, panorama_views=%s WHERE id=%s",
+                    "UPDATE item SET panorama_status=%s, panorama_views=%s, "
+                    "panorama_generated_at=NOW() WHERE id=%s",
                     (status, json.dumps(payload, ensure_ascii=False), item_id),
                 )
 
 
-def _total_size(files: list[Path]) -> int:
-    return sum(p.stat().st_size for p in files)
-
-
-def _compress_views(views_dir: Path, max_total: int = MAX_TOTAL_BYTES) -> None:
-    """PIL 压缩四视角图，确保总大小 ≤ max_total。
+def _compress_views(views_dir: Path, max_file: int = MAX_FILE_BYTES) -> None:
+    """PIL 压缩每张视角图至 ≤ max_file（500KB）。
 
     策略：已达标不重压缩（保画质）→ JPEG 质量逐级下降（85→70→55→40）
-    → 仍超限等比缩小到 768px。坏图或压缩后仍超限抛 RuntimeError（兜底失败）。
+    → 仍超限等比缩小到 768px。坏图抛 RuntimeError（兜底失败）。
     """
-    files = [views_dir / f"{name}.jpg" for name in VIEW_NAMES if (views_dir / f"{name}.jpg").exists()]
-    if _total_size(files) <= max_total:
-        return
-
     def _resave(path: Path, quality: int, thumbnail: bool = False) -> None:
         try:
             with Image.open(path) as img:
@@ -81,16 +75,18 @@ def _compress_views(views_dir: Path, max_total: int = MAX_TOTAL_BYTES) -> None:
         except (OSError, ValueError) as exc:
             raise RuntimeError(f"视角图压缩失败 {path.name}: {exc}") from exc
 
-    for quality in (85, 70, 55, 40):
-        for path in files:
+    for name in VIEW_NAMES:
+        path = views_dir / f"{name}.jpg"
+        if not path.exists() or path.stat().st_size <= max_file:
+            continue
+        for quality in (85, 70, 55, 40):
             _resave(path, quality)
-        if _total_size(files) <= max_total:
-            return
-    # 最终兜底：等比缩小到 768px 内
-    for path in files:
-        _resave(path, 60, thumbnail=True)
-    if _total_size(files) > max_total:
-        raise RuntimeError(f"生成图片总大小 {_total_size(files)} 字节，压缩后仍超过 2MB 上限")
+            if path.stat().st_size <= max_file:
+                break
+        else:
+            _resave(path, 60, thumbnail=True)  # 最终兜底：等比缩小到 768px 内
+            if path.stat().st_size > max_file:
+                raise RuntimeError(f"视角图 {path.name} 压缩后仍超过 500KB 上限")
 
 
 def generate(item_id: int, source_image: Path) -> dict:
@@ -139,42 +135,46 @@ def generate(item_id: int, source_image: Path) -> dict:
     return {"item_id": item_id, "views": views, "status": "ready", "fallback": fallback}
 
 
-def generate_async(item_id: int, source_image: Path) -> None:
-    """后台线程生成：先置 generating，失败置 failed，绝不抛出阻断发布。"""
-    def _run() -> None:
-        _update_status(item_id, "generating")
+def run_generate(item_id: int, source_image: Path) -> None:
+    """BackgroundTasks 入口：先置 generating，失败置 failed，绝不抛出阻断调用方。"""
+    _update_status(item_id, "generating")
+    try:
+        generate(item_id, source_image)
+    except Exception as exc:  # noqa: BLE001 生成失败优雅降级为单图
+        logger.warning("物品 %s 360° 生成失败，降级为单图：%s", item_id, exc)
         try:
-            generate(item_id, source_image)
-        except Exception as exc:  # noqa: BLE001 生成失败优雅降级为单图
-            logger.warning("物品 %s 360° 生成失败，降级为单图：%s", item_id, exc)
-            try:
-                _update_status(item_id, "failed")
-            except Exception:  # noqa: BLE001 状态回写失败仅记录日志
-                logger.exception("物品 %s panorama_status 回写失败", item_id)
-
-    threading.Thread(target=_run, daemon=True).start()
+            _update_status(item_id, "failed")
+        except Exception:  # noqa: BLE001 状态回写失败仅记录日志
+            logger.exception("物品 %s panorama_status 回写失败", item_id)
 
 
 def get_views(item_id: int) -> dict:
-    """读取物品 360° 视图信息；未生成时返回 status 与空 views。"""
+    """查询 panorama 状态，供前端轮询；panorama_views 仅 ready 时有值。"""
     with connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute(
-                "SELECT panorama_status, panorama_views FROM item WHERE id=%s LIMIT 1", (item_id,)
+                "SELECT panorama_status, panorama_views, panorama_generated_at "
+                "FROM item WHERE id=%s LIMIT 1",
+                (item_id,),
             )
             row = cursor.fetchone()
     if not row:
         raise ValueError("物品不存在")
+    status = row.get("panorama_status") or "none"
     payload: dict = {}
     if row.get("panorama_views"):
         try:
             payload = json.loads(row["panorama_views"])
         except json.JSONDecodeError:
             payload = {}
+    generated_at = row.get("panorama_generated_at")
+    if hasattr(generated_at, "isoformat"):
+        generated_at = generated_at.isoformat()
+    views = payload.get("views") if status == "ready" else None
     return {
         "item_id": item_id,
-        "status": row.get("panorama_status") or "none",
-        "views": payload.get("views") or {},
-        "generated_at": payload.get("generated_at") or "",
+        "panorama_status": status,
+        "panorama_views": views if (views and views.get("front")) else None,
+        "generated_at": generated_at or (payload.get("generated_at") or ""),
         "fallback": bool(payload.get("fallback", False)),
     }
