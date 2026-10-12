@@ -1,13 +1,13 @@
 <template>
   <section class="page" v-loading="loading">
-    <el-button link class="back" @click="$router.back()">{{ t('itemDetail.back') }}</el-button>
+    <el-button link class="back" @click="$router.back()">← 返回物品列表</el-button>
 
     <el-empty
       v-if="!loading && !item"
       class="not-found"
-      :description="t('itemDetail.notFoundTitle')"
+      description="物品不存在或已下架，看看邻居们的其他好物吧"
     >
-      <el-button type="primary" @click="$router.push('/items')">{{ t('itemDetail.notFoundBtn') }}</el-button>
+      <el-button type="primary" @click="$router.push('/items')">去探索物品</el-button>
     </el-empty>
 
     <div v-if="item" class="detail">
@@ -22,7 +22,7 @@
         <!-- 生成中：原图 + 角标 -->
         <div v-else-if="item.panorama_status === 'generating'" class="image-wrapper">
           <img v-if="firstImage" :src="firstImage" :alt="item.title" />
-          <div class="badge-generating">{{ t('panorama.badgeGenerating') }}</div>
+          <div class="badge-generating">360° 生成中</div>
         </div>
         <!-- 无 360° 或生成失败：静态图 -->
         <img v-else-if="firstImage" :src="firstImage" :alt="item.title" />
@@ -34,57 +34,57 @@
       </div>
 
       <div class="info">
-        <span class="chip chip-peach">{{ item.category_name || t('itemDetail.defaultCategory') }}</span>
+        <span class="chip chip-peach">{{ item.category_name || '社区好物' }}</span>
         <h1 class="title">{{ item.title }}</h1>
-        <p class="description muted">{{ item.description || t('itemDetail.noDescription') }}</p>
+        <p class="description muted">{{ item.description || '发布者没有留下更多描述。' }}</p>
 
         <div class="facts">
           <span class="chip chip-teal">{{ conditionText }}</span>
           <span class="chip">{{ modeText }}</span>
-          <span class="chip">{{ t('itemDetail.carbonChip', { value: item.carbon_value || 0 }) }}</span>
+          <span class="chip">↓ {{ item.carbon_value || 0 }} kg 减碳</span>
           <span v-if="item.exchange_mode === 3" class="chip chip-peach">¥ {{ item.price }}</span>
         </div>
 
         <div class="publisher">
-          <span class="publisher-avatar">{{ item.user_id || t('message.neighborShort') }}</span>
+          <span class="publisher-avatar">{{ item.user_id || '邻' }}</span>
           <div>
-            <div class="publisher-name">{{ t('itemDetail.publisherName', { id: item.user_id }) }}</div>
-            <div class="muted publisher-sub">{{ t('itemDetail.publisherSub') }}</div>
+            <div class="publisher-name">社区居民 #{{ item.user_id }}</div>
+            <div class="muted publisher-sub">邻里之间，真诚交换</div>
           </div>
         </div>
 
-        <el-button type="primary" size="large" class="contact" @click="openContact">{{ t('itemDetail.contactBtn') }}</el-button>
+        <el-button type="primary" size="large" class="contact" @click="openContact">联系发布者</el-button>
       </div>
 
       <!-- 联系发布者弹窗 -->
-      <el-dialog v-model="contactVisible" :title="t('itemDetail.dialogTitle')" width="420px" append-to-body>
+      <el-dialog v-model="contactVisible" title="联系发布者" width="420px" append-to-body>
         <div class="contact-dialog">
           <div class="contact-publisher">
-            <span class="contact-avatar">{{ item.user_id || t('message.neighborShort') }}</span>
+            <span class="contact-avatar">{{ item.user_id || '邻' }}</span>
             <div>
-              <div class="contact-name">{{ t('itemDetail.publisherName', { id: item.user_id }) }}</div>
-              <div class="muted">{{ t('itemDetail.publisherSub') }}</div>
+              <div class="contact-name">社区居民 #{{ item.user_id }}</div>
+              <div class="muted">邻里之间，真诚交换</div>
             </div>
           </div>
 
           <template v-if="item.contact">
             <div class="contact-box">
-              <span class="contact-label">{{ t('itemDetail.contactLabel') }}</span>
+              <span class="contact-label">发布者留下的联系方式</span>
               <span class="contact-value">{{ item.contact }}</span>
             </div>
-            <el-button type="primary" class="contact-action" @click="copyContact">{{ t('itemDetail.copyBtn') }}</el-button>
+            <el-button type="primary" class="contact-action" @click="copyContact">复制联系方式</el-button>
           </template>
           <template v-else>
             <div class="contact-empty">
               <span class="empty-emoji">📮</span>
-              <p>{{ t('itemDetail.contactEmptyTitle') }}</p>
-              <span>{{ t('itemDetail.contactEmptyTip') }}</span>
+              <p>发布者暂未公开联系方式</p>
+              <span>可以给邻居发私信留言，约好在社区广场当面交换</span>
             </div>
-            <el-button type="primary" class="contact-action" @click="goMessages">{{ t('itemDetail.goMessage') }}</el-button>
+            <el-button type="primary" class="contact-action" @click="goMessages">去留言沟通</el-button>
           </template>
 
           <div class="contact-tips">
-            {{ t('itemDetail.tips') }}
+            🌿 温馨提示：礼貌沟通、当面验货、注意保护个人隐私
           </div>
         </div>
       </el-dialog>
@@ -99,13 +99,11 @@ import { ElMessage } from 'element-plus'
 import { getItem } from '../api/item'
 import { getPanorama } from '../api/panorama'
 import PanoramaViewer from '../components/PanoramaViewer.vue'
-import { useI18n } from '../i18n'
 
 const route = useRoute()
 const router = useRouter()
 const item = ref(null)
 const loading = ref(true)
-const { t } = useI18n()
 
 /* ---------- 360° 视图 ---------- */
 let panoTimer = null
@@ -163,7 +161,7 @@ async function copyContact() {
   if (!text) return
   try {
     await navigator.clipboard.writeText(text)
-    ElMessage.success(t('itemDetail.copyOk'))
+    ElMessage.success('联系方式已复制')
   } catch {
     // 非安全上下文（http）下 clipboard API 不可用时的兜底
     const input = document.createElement('textarea')
@@ -174,23 +172,23 @@ async function copyContact() {
     input.select()
     try {
       document.execCommand('copy')
-      ElMessage.success(t('itemDetail.copyOk'))
+      ElMessage.success('联系方式已复制')
     } catch {
-      ElMessage.warning(t('itemDetail.copyFail'))
+      ElMessage.warning('复制失败，请手动记录联系方式')
     }
     document.body.removeChild(input)
   }
 }
 
-// 模式/成色：渲染时走 i18n，语言切换即时更新
-const MODE_KEY = { 1: 'modeGift', 2: 'modeSwap', 3: 'modeLowPrice' }
+// 模式/成色
+const MODE_TEXT = { 1: '赠送', 2: '交换', 3: '低价转让' }
 const modeText = computed(() =>
-  t(`itemList.${MODE_KEY[item.value?.exchange_mode] || 'modeSwap'}`),
+  MODE_TEXT[item.value?.exchange_mode] || '交换',
 )
+const CONDITION_TEXT = { 1: '成色一般', 2: '七成新', 3: '八成新', 4: '九成新', 5: '几乎全新' }
 const conditionText = computed(() => {
-  const key = `home.condition${item.value?.condition_level}`
-  const text = t(key)
-  return text === key ? t('home.conditionGood') : text
+  const level = item.value?.condition_level
+  return CONDITION_TEXT[level] || '状态良好'
 })
 
 const firstImage = computed(() => {

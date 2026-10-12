@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api.v1 import auth, category, item, message, review, ai, feedback
 from app.api.v1 import accessibility, elderly, panorama, user, volunteer
-from app.api.v1.i18n import i18n_router, translate_router
 from app.routers.admin import account as admin_account
 from app.routers.admin import ai as admin_ai
 from app.routers.admin import auth as admin_auth
@@ -50,8 +49,6 @@ _NEW_ROUTERS = [
     (accessibility.router, "/accessibility", "无障碍模式"),
     (volunteer.router, "/volunteer", "志愿者"),
     (panorama.router, "/panorama", "360°视图"),
-    (i18n_router, "/i18n", "国际化"),
-    (translate_router, "", "翻译"),
     (user.router, "/user", "个人中心"),
 ]
 for _router, _suffix, _tag in _NEW_ROUTERS:

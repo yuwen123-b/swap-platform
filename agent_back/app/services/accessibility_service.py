@@ -5,7 +5,6 @@ from pathlib import Path
 from app.core.config import settings
 from app.db.pool import connection
 from app.services import llm_client
-from app.utils.i18n import lang_name, normalize_lang
 
 # 无障碍模式枚举
 MODE_NORMAL = "normal"
@@ -23,17 +22,17 @@ VALID_MOBILITY = (MOBILITY_FREE, MOBILITY_LIMITED, MOBILITY_ASSISTED)
 _CONDITION_TEXT = {0: "全新", 1: "九成新", 2: "八成新", 3: "有使用痕迹"}
 _CONDITION_TEXT_EN = {0: "brand new", 1: "90% new", 2: "80% new", 3: "gently used"}
 
-# 语音标签提示词：物品名+成色+颜色+特征，一句话；{language} 明确输出语言
+# 语音标签提示词：物品名+成色+颜色+特征，一句话
 _VOICE_LABEL_PROMPT = (
-    "根据物品信息生成一句{language}语音标签，格式为「物品名+成色+颜色+特征」，"
-    "必须使用{language}输出，不超过 30 字，只输出标签本身，不要解释。\n"
+    "根据物品信息生成一句中文语音标签，格式为「物品名+成色+颜色+特征」，"
+    "不超过 30 字，只输出标签本身，不要解释。\n"
     "物品名：{title}\n描述：{description}"
 )
 
 # 语音标签提示词（多模态版）：图片与文本结合，颜色/成色优先依据图片判断
 _VOICE_LABEL_IMAGE_PROMPT = (
-    "根据物品图片与文字信息生成一句{language}语音标签，格式为「物品名+成色+颜色+特征」，"
-    "颜色与成色优先依据图片判断，必须使用{language}输出，不超过 30 字，只输出标签本身，不要解释。\n"
+    "根据物品图片与文字信息生成一句中文语音标签，格式为「物品名+成色+颜色+特征」，"
+    "颜色与成色优先依据图片判断，不超过 30 字，只输出标签本身，不要解释。\n"
     "物品名：{title}\n描述：{description}"
 )
 
@@ -117,10 +116,9 @@ def _first_local_image(images_json: str | None) -> Path | None:
     return path if path.is_file() else None
 
 
-def _label_from_image(image_path: Path, item: dict, lang: str) -> str | None:
+def _label_from_image(image_path: Path, item: dict) -> str | None:
     """多模态生成语音标签（qwen-vl 分析物品图片+文本）；失败返回 None。"""
     prompt = _VOICE_LABEL_IMAGE_PROMPT.format(
-        language=lang_name(lang),
         title=item["title"],
         description=(item.get("description") or "")[:200],
     )
@@ -131,10 +129,9 @@ def _label_from_image(image_path: Path, item: dict, lang: str) -> str | None:
         return None
 
 
-def _label_from_text(item: dict, lang: str) -> str | None:
+def _label_from_text(item: dict) -> str | None:
     """纯文本生成语音标签（无图或多模态失败时兜底）；失败返回 None。"""
     prompt = _VOICE_LABEL_PROMPT.format(
-        language=lang_name(lang),
         title=item["title"],
         description=(item.get("description") or "")[:200],
     )
@@ -146,12 +143,11 @@ def _label_from_text(item: dict, lang: str) -> str | None:
 
 
 def generate_voice_label(item_id: int, language: str = "zh_CN") -> str:
-    """为物品生成语音标签「物品名+成色+颜色+特征」，按指定语言输出。
+    """为物品生成语音标签「物品名+成色+颜色+特征」，中文输出。
 
     生成链路三级降级：qwen-vl 多模态分析物品首图（颜色/成色更准确）
     → 纯文本生成 → 字段拼接，任何一级失败都不抛异常。
     """
-    lang = normalize_lang(language)
     with connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -165,15 +161,12 @@ def generate_voice_label(item_id: int, language: str = "zh_CN") -> str:
     label = None
     image_path = _first_local_image(item.get("images"))
     if image_path:
-        label = _label_from_image(image_path, item, lang)
+        label = _label_from_image(image_path, item)
     if not label:
-        label = _label_from_text(item, lang)
+        label = _label_from_text(item)
     if label and len(label) <= 40:
         return label
 
-    # 最终降级：直接拼接物品名与成色（按语言）
-    if lang == "en_US":
-        condition = _CONDITION_TEXT_EN.get(item.get("condition_level") or 0, "good condition")
-        return f"{item['title']}, {condition}"
+    # 最终降级：直接拼接物品名与成色
     condition = _CONDITION_TEXT.get(item.get("condition_level") or 0, "成色良好")
     return f"{item['title']}，{condition}"

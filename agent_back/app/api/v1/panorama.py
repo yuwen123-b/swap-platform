@@ -14,7 +14,6 @@ from app.core.response import success
 from app.core.security import get_current_user_id
 from app.db.pool import connection
 from app.services import panorama_service
-from app.utils.i18n import get_text
 
 router = APIRouter()
 
@@ -66,7 +65,7 @@ def generate_panorama(
     background_tasks.add_task(panorama_service.run_generate, item_id, source_image)
     return success(
         {"item_id": item_id, "status": "generating"},
-        get_text("panorama.generating"),
+        "360° 视图生成中，请稍候查看。",
     )
 
 

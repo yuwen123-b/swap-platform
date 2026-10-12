@@ -8,10 +8,6 @@ from app.api.v1 import item as item_api
 def _patch_db(monkeypatch, rows):
     cursor = FakeCursor(rows=rows)
     monkeypatch.setattr("app.api.v1.item.connection", make_connection(cursor))
-    monkeypatch.setattr(
-        "app.api.v1.item.translation_service.normalize_request_lang",
-        lambda lang: "zh",
-    )
     return cursor
 
 
@@ -22,7 +18,7 @@ def test_get_item_panorama_ready(monkeypatch):
         "id": 1, "title": "Test", "description": "Desc",
         "panorama_status": "ready", "panorama_views": views_json,
     }])
-    result = item_api.get_item(1, accept_language="zh")
+    result = item_api.get_item(1)
     assert result["code"] == 0
     assert result["data"]["panorama_status"] == "ready"
     assert result["data"]["panorama_views"]["front"] == "/f.jpg"
@@ -34,7 +30,7 @@ def test_get_item_panorama_generating(monkeypatch):
         "id": 2, "title": "Test", "description": "Desc",
         "panorama_status": "generating", "panorama_views": None,
     }])
-    result = item_api.get_item(2, accept_language="zh")
+    result = item_api.get_item(2)
     assert result["data"]["panorama_status"] == "generating"
     assert result["data"]["panorama_views"] is None
 
@@ -45,6 +41,6 @@ def test_get_item_panorama_bad_json(monkeypatch):
         "id": 3, "title": "Test", "description": "Desc",
         "panorama_status": "ready", "panorama_views": "not-valid-json",
     }])
-    result = item_api.get_item(3, accept_language="zh")
+    result = item_api.get_item(3)
     assert result["data"]["panorama_status"] == "ready"
     assert result["data"]["panorama_views"] is None

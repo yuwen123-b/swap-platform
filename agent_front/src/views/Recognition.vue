@@ -1,15 +1,15 @@
 <template>
   <section class="page">
-    <div class="eyebrow">{{ t('recognition.eyebrow') }}</div>
+    <div class="eyebrow">AI 能力</div>
     <h1 class="page-title">
-      {{ t('recognition.titleLead') }}<br />
-      <span class="gradient-text">{{ t('recognition.titleHighlight') }}</span>
+      拍一张照片，<br />
+      <span class="gradient-text">AI 帮你认出这件旧物。</span>
     </h1>
 
     <div class="rec-layout">
       <!-- 上传区 -->
       <el-card class="panel" shadow="never">
-        <h2 class="panel-title">{{ t('recognition.uploadTitle') }}</h2>
+        <h2 class="panel-title">上传物品照片</h2>
         <el-upload
           drag
           accept="image/jpeg,image/png,image/webp,image/gif"
@@ -18,12 +18,12 @@
           :on-change="onFileChange"
         >
           <div v-if="previewUrl" class="preview-wrap">
-            <img :src="previewUrl" :alt="t('recognition.previewAlt')" />
+            <img :src="previewUrl" alt="待识别图片" />
           </div>
           <div v-else class="upload-empty">
             <el-icon class="upload-icon"><UploadFilled /></el-icon>
-            <div class="upload-tip">{{ t('recognition.uploadTip') }}<em>{{ t('recognition.uploadTipEm') }}</em></div>
-            <div class="muted upload-sub">{{ t('recognition.uploadSub') }}</div>
+            <div class="upload-tip">拖拽图片到这里，或 <em>点击选择</em></div>
+            <div class="muted upload-sub">支持 jpg/png/webp/gif，最大 5MB</div>
           </div>
         </el-upload>
 
@@ -35,17 +35,17 @@
             :disabled="!file"
             @click="recognize"
           >
-            {{ loading ? t('recognition.recognizing') : t('recognition.startRecognize') }}
+            {{ loading ? '识别中…' : '开始识别' }}
           </el-button>
-          <el-button v-if="file" class="full" plain @click="reset">{{ t('recognition.reselect') }}</el-button>
+          <el-button v-if="file" class="full" plain @click="reset">重新选择</el-button>
         </div>
       </el-card>
 
       <!-- 结果区 -->
       <el-card class="panel" shadow="never">
-        <h2 class="panel-title">{{ t('recognition.resultTitle') }}</h2>
+        <h2 class="panel-title">识别结果</h2>
 
-        <div v-if="loading" class="result-hint" v-loading="loading" :element-loading-text="t('recognition.loadingText')" />
+        <div v-if="loading" class="result-hint" v-loading="loading" element-loading-text="AI 正在辨认这件物品…" />
 
         <template v-else-if="result">
           <div class="result-head">
@@ -53,7 +53,7 @@
             <el-tag type="success" effect="plain">{{ categoryText(result.category) }}</el-tag>
           </div>
           <div class="result-row">
-            <span class="muted">{{ t('recognition.conditionLabel') }}</span>
+            <span class="muted">成色估计</span>
             <el-rate :model-value="result.condition_level" disabled />
           </div>
           <p class="result-desc">{{ result.description }}</p>
@@ -61,15 +61,15 @@
             <span v-for="tag in result.tags" :key="tag" class="chip">{{ tag }}</span>
           </div>
           <div class="result-actions">
-            <el-button type="primary" plain @click="$router.push('/items')">{{ t('recognition.browseOrPublish') }}</el-button>
-            <el-button @click="reset">{{ t('recognition.recognizeAgain') }}</el-button>
+            <el-button type="primary" plain @click="$router.push('/items')">去发布 / 逛逛物品</el-button>
+            <el-button @click="reset">再识别一件</el-button>
           </div>
           <small v-if="result.engine === 'mock'" class="muted engine-tip">
-            {{ t('recognition.mockTip') }}
+            演示模式结果：后端未配置多模态模型（LLM_VL_MODEL），配置后即可真实识别。
           </small>
         </template>
 
-        <el-empty v-else :description="t('recognition.emptyResult')" />
+        <el-empty v-else description="上传一张物品照片，识别结果会显示在这里" />
       </el-card>
     </div>
   </section>
@@ -80,9 +80,6 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { recognitionImage } from '../api/ai'
-import { useI18n } from '../i18n'
-
-const { t } = useI18n()
 
 const file = ref(null)
 const previewUrl = ref('')
@@ -90,31 +87,28 @@ const loading = ref(false)
 const result = ref(null)
 
 const CATEGORY_KEY = {
-  数码电子: 'recognition.catDigital',
-  家居家电: 'recognition.catAppliance',
-  图书文具: 'recognition.catBooks',
-  服饰鞋包: 'recognition.catClothing',
-  母婴用品: 'recognition.catBaby',
-  运动户外: 'recognition.catSports',
-  美妆个护: 'recognition.catBeauty',
-  其他闲置: 'recognition.catOther',
+  数码电子: '数码电子',
+  家居家电: '家居家电',
+  图书文具: '图书文具',
+  服饰鞋包: '服饰鞋包',
+  母婴用品: '母婴用品',
+  运动户外: '运动户外',
+  美妆个护: '美妆个护',
+  其他闲置: '其他闲置',
 }
 
 function categoryText(category) {
-  const key = CATEGORY_KEY[category]
-  if (!key) return category
-  const text = t(key)
-  return text === key ? category : text
+  return CATEGORY_KEY[category] || category
 }
 
 function onFileChange(uploadFile) {
   const raw = uploadFile.raw
   if (!raw) return
   if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(raw.type)) {
-    return ElMessage.warning(t('recognition.formatWarning'))
+    return ElMessage.warning('仅支持 jpg/png/webp/gif 格式图片')
   }
   if (raw.size > 5 * 1024 * 1024) {
-    return ElMessage.warning(t('recognition.sizeWarning'))
+    return ElMessage.warning('图片大小不能超过 5MB')
   }
   file.value = raw
   previewUrl.value = URL.createObjectURL(raw)
@@ -128,7 +122,7 @@ async function recognize() {
     const formData = new FormData()
     formData.append('image', file.value)
     result.value = await recognitionImage(formData)
-    ElMessage.success(t('recognition.recognizeOk'))
+    ElMessage.success('识别完成')
   } catch {
     // 错误提示已由请求拦截器处理
   } finally {

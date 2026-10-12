@@ -1,15 +1,15 @@
 <template>
   <section class="page message-page">
     <div class="page-head">
-      <div class="eyebrow">{{ t('message.eyebrow') }}</div>
-      <h1 class="page-title">{{ t('message.titleLead') }}<span class="gradient-text">{{ t('message.titleHighlight') }}</span></h1>
-      <p class="muted page-sub">{{ t('message.subtitle') }}</p>
+      <div class="eyebrow">社区互助</div>
+      <h1 class="page-title">邻里<span class="gradient-text">私信</span></h1>
+      <p class="muted page-sub">和邻居聊聊物品，约一场温暖的交换</p>
     </div>
 
     <div class="chat-shell">
       <!-- 左侧：会话列表 -->
       <aside class="session-panel">
-        <div class="panel-head">{{ t('message.sessionList') }}</div>
+        <div class="panel-head">会话列表</div>
         <div v-if="sessions.length" class="session-list">
           <button
             v-for="s in sessions"
@@ -18,9 +18,9 @@
             :class="{ active: s.other_user_id === activeUserId }"
             @click="openSession(s)"
           >
-            <span class="avatar">{{ (s.other_nickname || t('message.neighborShort')).charAt(0) }}</span>
+            <span class="avatar">{{ (s.other_nickname || '邻').charAt(0) }}</span>
             <span class="session-main">
-              <span class="session-name">{{ s.other_nickname || t('message.defaultNeighbor') }}</span>
+              <span class="session-name">{{ s.other_nickname || '社区邻居' }}</span>
               <span class="session-last">{{ s.content }}</span>
             </span>
             <span class="session-side">
@@ -32,16 +32,16 @@
             </span>
           </button>
         </div>
-        <div v-else class="session-empty muted">{{ t('message.emptySessions') }}</div>
+        <div v-else class="session-empty muted">暂无私信，从物品详情页联系邻居吧</div>
       </aside>
 
       <!-- 右侧：聊天窗口 -->
       <div class="chat-panel">
         <template v-if="activeUserId">
           <div class="panel-head chat-head">
-            <span class="avatar sm">{{ (activeName || t('message.neighborShort')).charAt(0) }}</span>
-            <span class="chat-title">{{ activeName || t('message.defaultNeighbor') }}</span>
-            <span v-if="currentItemId" class="chat-item-tag">{{ t('message.relatedItem', { id: currentItemId }) }}</span>
+            <span class="avatar sm">{{ (activeName || '邻').charAt(0) }}</span>
+            <span class="chat-title">{{ activeName || '社区邻居' }}</span>
+            <span v-if="currentItemId" class="chat-item-tag">关联物品 #{{ currentItemId }}</span>
           </div>
 
           <div ref="chatBox" class="chat-box">
@@ -64,16 +64,16 @@
               type="textarea"
               :rows="2"
               resize="none"
-              :placeholder="t('message.inputPlaceholder')"
+              placeholder="和邻居聊聊吧……（Enter 发送，Shift+Enter 换行）"
               @keydown.enter.exact.prevent="send"
             />
-            <el-button type="primary" :loading="sending" @click="send">{{ t('message.send') }}</el-button>
+            <el-button type="primary" :loading="sending" @click="send">发送</el-button>
           </div>
         </template>
 
         <div v-else class="chat-empty">
           <span class="empty-icon">💬</span>
-          <p>{{ t('message.selectTip') }}</p>
+          <p>选择左侧一个邻居，开始你们的交换故事</p>
         </div>
       </div>
     </div>
@@ -85,9 +85,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getChatHistory, getSessionList, markRead, sendMessage } from '../api/message'
 import { useUserStore } from '../store/user'
-import { useI18n } from '../i18n'
 
-const { t } = useI18n()
 const route = useRoute()
 const userStore = useUserStore()
 const myId = computed(() => userStore.user?.id)
@@ -184,7 +182,7 @@ onMounted(async () => {
   if (otherId) {
     const s = sessions.value.find((x) => x.other_user_id === otherId)
     activeUserId.value = otherId
-    activeName.value = s?.other_nickname || t('message.neighborWithId', { id: otherId })
+    activeName.value = s?.other_nickname || `邻居 #${otherId}`
     const itemId = Number(route.query.itemId)
     currentItemId.value = itemId || null
     await loadChat()

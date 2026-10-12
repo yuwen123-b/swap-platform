@@ -7,7 +7,7 @@
       class="canvas-container"
       tabindex="0"
       role="img"
-      :aria-label="t('panorama.ariaStage', { tip: t('panorama.dragTip'), view: currentViewLabel })"
+      :aria-label="`拖动旋转查看，当前视角：${currentViewLabel}`"
       @pointerdown="onDragStart"
       @pointermove="onDragMove"
       @pointerup="onDragEnd"
@@ -16,7 +16,7 @@
       @keydown.right.prevent="step(1)"
     >
       <span class="badge-360" aria-hidden="true">360°</span>
-      <span class="drag-hint" aria-hidden="true">⟵ ⟶ {{ t('panorama.dragTip') }}</span>
+      <span class="drag-hint" aria-hidden="true">⟵ ⟶ 拖动旋转查看</span>
     </div>
 
     <!-- 原图模式 -->
@@ -24,7 +24,7 @@
       v-if="showOriginal && originalImage"
       :src="originalImage"
       class="original-img"
-      :alt="t('panorama.viewOriginal')"
+      alt="查看原图"
       draggable="false"
     />
 
@@ -34,18 +34,18 @@
         v-if="originalImage"
         type="button"
         class="ctl-btn"
-        :aria-label="showOriginal ? t('panorama.view360') : t('panorama.viewOriginal')"
+        :aria-label="showOriginal ? '360° 查看' : '查看原图'"
         @click="showOriginal = !showOriginal"
       >
-        {{ showOriginal ? t('panorama.view360') : t('panorama.viewOriginal') }}
+        {{ showOriginal ? '360° 查看' : '查看原图' }}
       </button>
       <button
         type="button"
         class="ctl-btn"
-        :aria-label="autoRotate ? t('panorama.stop') : t('panorama.autoPlay')"
+        :aria-label="autoRotate ? '停止旋转' : '自动旋转'"
         @click="toggleAutoRotate"
       >
-        {{ autoRotate ? t('panorama.stop') : t('panorama.autoPlay') }}
+        {{ autoRotate ? '停止旋转' : '自动旋转' }}
       </button>
     </div>
   </div>
@@ -54,14 +54,12 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
-import { useI18n } from '../i18n'
 
 const props = defineProps({
   views: { type: Object, required: true }, // { front, left, back, right }
   originalImage: { type: String, default: '' },
 })
 const emit = defineEmits(['error'])
-const { t } = useI18n()
 
 const canvasContainer = ref(null)
 const showOriginal = ref(false)
@@ -75,11 +73,8 @@ const RADIUS = 5
 const PANEL_W = 2 * RADIUS * Math.tan(Math.PI / 4) // 10
 const PANEL_H = 7.5
 
-const currentViewLabel = computed(() => {
-  const key = `panorama.${currentView.value}`
-  const text = t(key)
-  return text === key ? currentView.value : text
-})
+const VIEW_LABELS = { front: '正面', right: '右侧', back: '背面', left: '左侧' }
+const currentViewLabel = computed(() => VIEW_LABELS[currentView.value] || currentView.value)
 
 // Three.js 运行时对象
 let scene, camera, renderer, animationId

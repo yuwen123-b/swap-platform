@@ -5,7 +5,7 @@
       class="talk-btn"
       :class="{ recording }"
       type="button"
-      :aria-label="recording ? t('elderlyMode.releaseToSend') : t('elderlyMode.holdToTalk')"
+      :aria-label="recording ? '松开 发送' : '按住 说话'"
       @pointerdown.prevent="startRecord"
       @pointerup.prevent="stopRecord"
       @pointerleave="cancelIfRecording"
@@ -17,7 +17,7 @@
         <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
         <path d="M12 18v4" />
       </svg>
-      <span>{{ recording ? t('elderlyMode.recording') : t('elderlyMode.holdToTalk') }}</span>
+      <span>{{ recording ? '正在录音，松开发送' : '按住 说话' }}</span>
     </button>
 
     <!-- 文字兜底：ASR 不可用或用户偏好打字 -->
@@ -26,20 +26,18 @@
         v-model="text"
         class="text-input"
         type="text"
-        :placeholder="t('elderlyMode.inputPlaceholder')"
-        :aria-label="t('elderlyMode.inputPlaceholder')"
+        placeholder="也可以在这里打字，比如：我想换电饭煲"
+        aria-label="也可以在这里打字，比如：我想换电饭煲"
       />
-      <button class="send-btn" type="submit" :aria-label="t('elderlyMode.send')">{{ t('elderlyMode.send') }}</button>
+      <button class="send-btn" type="submit" aria-label="发送">发送</button>
     </form>
   </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, ref } from 'vue'
-import { useI18n } from '../i18n'
 
 const emit = defineEmits(['audio', 'text'])
-const { t } = useI18n()
 
 const recording = ref(false)
 const text = ref('')

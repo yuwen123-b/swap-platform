@@ -37,4 +37,3 @@ class ElderlyInteractResponse(BaseModel):
 class CallHelpRequest(BaseModel):
     user_id: int
     context: str = ""
-    lang: str = "zh_CN"

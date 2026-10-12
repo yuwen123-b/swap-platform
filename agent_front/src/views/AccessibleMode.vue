@@ -1,10 +1,10 @@
 <template>
   <div class="accessible-page" :class="{ hc: highContrast }">
     <header class="page-head">
-      <h1>{{ t('accessibleMode.title') }}</h1>
+      <h1>无障碍模式</h1>
       <label class="hc-toggle">
-        <input type="checkbox" v-model="highContrast" :aria-label="t('accessibleMode.highContrast')" @change="onToggleContrast" />
-        <span>{{ t('accessibleMode.highContrast') }}</span>
+        <input type="checkbox" v-model="highContrast" aria-label="高对比度" @change="onToggleContrast" />
+        <span>高对比度</span>
       </label>
     </header>
 
@@ -14,55 +14,54 @@
         role="tab" :aria-selected="mode === 'visually_impaired'"
         :class="['tab', { active: mode === 'visually_impaired' }]"
         @click="switchMode('visually_impaired')"
-      >{{ t('accessibleMode.visualMode') }}</button>
+      >视障模式</button>
       <button
         role="tab" :aria-selected="mode === 'mobility_impaired'"
         :class="['tab', { active: mode === 'mobility_impaired' }]"
         @click="switchMode('mobility_impaired')"
-      >{{ t('accessibleMode.mobilityMode') }}</button>
+      >肢体障碍模式</button>
     </div>
 
     <p v-if="tip" class="tip" role="status">{{ tip }}</p>
 
     <!-- 视障子模式：语音标签 + 语音确认 -->
-    <section v-if="mode === 'visually_impaired'" class="panel" :aria-label="t('accessibleMode.visualMode')">
-      <p class="mode-tip">{{ t('accessibleMode.visualTip') }}</p>
+    <section v-if="mode === 'visually_impaired'" class="panel" aria-label="视障模式">
+      <p class="mode-tip">全程语音播报，说「我要换」即确认</p>
       <label class="field">
-        <span>{{ t('accessibleMode.voiceLabelId') }}</span>
+        <span>语音标签 ID</span>
         <input v-model.number="itemId" type="number" min="1" inputmode="numeric"
-               :aria-label="t('accessibleMode.voiceLabelId')" @keyup.enter="loadLabel" />
+               aria-label="语音标签 ID" @keyup.enter="loadLabel" />
       </label>
-      <button class="primary-btn" :aria-label="t('accessibleMode.voiceLabel')" @click="loadLabel">
-        {{ t('accessibleMode.voiceLabel') }}
+      <button class="primary-btn" aria-label="语音标签" @click="loadLabel">
+        语音标签
       </button>
 
       <div v-if="voiceLabel" class="label-card" role="status" :aria-label="voiceLabel" tabindex="0">
         <p class="label-text">{{ voiceLabel }}</p>
         <div class="label-actions">
-          <button class="primary-btn" :aria-label="t('accessibleMode.playLabel')" @click="playLabel">
-            {{ t('accessibleMode.playLabel') }}
+          <button class="primary-btn" aria-label="🔊 播放语音标签" @click="playLabel">
+            🔊 播放语音标签
           </button>
-          <button class="confirm-btn" :aria-label="t('accessibleMode.wantSwap')" @click="confirmSwap">
-            {{ t('accessibleMode.wantSwap') }}
+          <button class="confirm-btn" aria-label="我要换" @click="confirmSwap">
+            我要换
           </button>
         </div>
       </div>
     </section>
 
     <!-- 肢体障碍子模式：行动能力 + 交接方式 + 一键委托 -->
-    <section v-else class="panel" :aria-label="t('accessibleMode.mobilityMode')">
-      <p class="mode-tip">{{ t('accessibleMode.mobilityTip') }}</p>
-
+    <section v-else class="panel" aria-label="肢体障碍模式">
+      <p class="mode-tip">已为您跳过自取，推荐上门送达</p>
       <fieldset class="mobility-group">
-        <legend>{{ t('accessibleMode.mobility') }}</legend>
+        <legend>行动能力</legend>
         <label v-for="lv in mobilityLevels" :key="lv" class="radio-row">
           <input type="radio" name="mobility" :value="lv" v-model="mobilityLevel" @change="onSetMobility" />
           <span>{{ mobilityText(lv) }}</span>
         </label>
       </fieldset>
 
-      <div class="handover" :aria-label="t('accessibleMode.handoverTitle')">
-        <h2>{{ t('accessibleMode.handoverTitle') }}</h2>
+      <div class="handover" aria-label="选择交接方式">
+        <h2>选择交接方式</h2>
         <ul class="handover-list">
           <li v-for="m in handoverMethods" :key="m">
             <button class="method-btn" :class="{ recommended: m === recommended }" @click="selectedMethod = m">
@@ -72,12 +71,11 @@
           </li>
         </ul>
         <p v-if="!handoverMethods.includes('self_pickup')" class="skip-note">
-          {{ t('accessibleMode.mobilityTip') }}
+          已为您跳过自取，推荐上门送达
         </p>
       </div>
-
-      <button class="delegate-btn" :aria-label="t('accessibleMode.delegateVolunteer')" @click="delegate">
-        {{ t('accessibleMode.delegateVolunteer') }}
+      <button class="delegate-btn" aria-label="一键委托志愿者" @click="delegate">
+        一键委托志愿者
       </button>
       <p v-if="taskMsg" class="tip" role="status">{{ taskMsg }}</p>
     </section>
@@ -86,7 +84,6 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useI18n } from '../i18n'
 import {
   setAccessibilityMode, setMobilityLevel, getHandoverOptions, getVoiceLabel,
   createVolunteerTask,
@@ -94,7 +91,6 @@ import {
 import { useUserStore } from '../store/user'
 import { useProfileStore } from '../store/profile'
 
-const { t, state } = useI18n()
 const userStore = useUserStore()
 const profileStore = useProfileStore()
 userStore.hydrate()
@@ -116,22 +112,21 @@ const handoverMethods = ref(['self_pickup', 'door_delivery', 'volunteer_pickup']
 const recommended = ref('self_pickup')
 const selectedMethod = ref('')
 
-const MOBILITY_KEY = {
-  free: 'accessibleMode.mobilityFree',
-  limited: 'accessibleMode.mobilityLimited',
-  assisted: 'accessibleMode.mobilityAssisted',
+const MOBILITY_TEXT = {
+  free: '自如',
+  limited: '受限',
+  assisted: '需协助',
 }
-const METHOD_KEY = {
-  self_pickup: 'accessibleMode.handoverSelf',
-  door_delivery: 'accessibleMode.handoverDelivery',
-  volunteer_pickup: 'accessibleMode.handoverVolunteer',
+const METHOD_TEXT = {
+  self_pickup: '自行自取',
+  door_delivery: '上门送达',
+  volunteer_pickup: '志愿者代取',
 }
 function mobilityText(lv) {
-  return t(MOBILITY_KEY[lv] || `accessibleMode.mobility${lv.charAt(0).toUpperCase()}${lv.slice(1)}`)
+  return MOBILITY_TEXT[lv] || lv
 }
 function methodText(m) {
-  const key = METHOD_KEY[m]
-  return key ? t(key) : m
+  return METHOD_TEXT[m] || m
 }
 
 // 向导页内的设置变更同步到全局 profile（持久化），失败不阻塞原有交互
@@ -145,13 +140,13 @@ async function switchMode(m) {
   if (m === 'visually_impaired') highContrast.value = true
   try {
     await setAccessibilityMode({ user_id: userId(), mode: m })
-    tip.value = t('accessibleMode.modeSet')
+    tip.value = '模式已设置'
     syncProfile({
       accessibilityMode: m,
       highContrast: highContrast.value,
     })
   } catch {
-    tip.value = t('common.genericError')
+    tip.value = '操作失败，请稍后再试'
   }
   if (m === 'mobility_impaired') loadHandover()
 }
@@ -172,7 +167,7 @@ async function loadLabel() {
     voiceLabel.value = data.label
     speak(data.label)
   } catch {
-    tip.value = t('common.genericError')
+    tip.value = '操作失败，请稍后再试'
   }
 }
 
@@ -189,18 +184,18 @@ function playLabel() { if (voiceLabel.value) speak(voiceLabel.value) }
 
 // 语音确认：支持系统语音识别则说「我要换」，否则按钮点击等效
 function confirmSwap() {
-  speak(t('accessibleMode.wantSwap'))
-  tip.value = t('elderlyMode.cardContacted')
+  speak('我要换')
+  tip.value = '已帮您联系'
 }
 
 async function onSetMobility() {
   try {
     await setMobilityLevel({ user_id: userId(), mobility_level: mobilityLevel.value })
-    tip.value = t('accessibleMode.mobilitySet')
+    tip.value = '行动能力已设置'
     syncProfile({ mobilityLevel: mobilityLevel.value })
     loadHandover()
   } catch {
-    tip.value = t('common.genericError')
+    tip.value = '操作失败，请稍后再试'
   }
 }
 
@@ -218,9 +213,9 @@ async function delegate() {
       handover_method: 'volunteer_pickup',
       note: '',
     })
-    taskMsg.value = t('accessibleMode.taskCreated')
+    taskMsg.value = '代取任务已生成，正在通知志愿者'
   } catch {
-    taskMsg.value = t('common.genericError')
+    taskMsg.value = '操作失败，请稍后再试'
   }
 }
 

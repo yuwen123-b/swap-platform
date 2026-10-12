@@ -2,63 +2,63 @@
   <section class="page contact-page">
     <div class="page-head">
       <div class="eyebrow">Contact Us</div>
-      <h1 class="page-title">{{ t('contact.titleLead') }}<span class="gradient-text">{{ t('contact.titleHighlight') }}</span></h1>
-      <p class="page-sub muted">{{ t('contact.subtitle') }}</p>
+      <h1 class="page-title">联系<span class="gradient-text">客服</span></h1>
+      <p class="page-sub muted">有任何问题或建议，随时找到我们</p>
     </div>
 
     <!-- 客服信息 -->
     <div class="info-grid">
       <div class="panel info-card">
         <span class="info-icon">✉️</span>
-        <h2 class="info-title">{{ t('contact.emailTitle') }}</h2>
+        <h2 class="info-title">客服邮箱</h2>
         <p class="info-value">support@xianwu-huanxin.com</p>
-        <p class="info-note">{{ t('contact.emailNote') }}</p>
+        <p class="info-note">全天生效，48 小时内回复</p>
       </div>
       <div class="panel info-card">
         <span class="info-icon">📞</span>
-        <h2 class="info-title">{{ t('contact.phoneTitle') }}</h2>
+        <h2 class="info-title">客服电话</h2>
         <p class="info-value">400-880-2026</p>
-        <p class="info-note">{{ t('contact.phoneNote') }}</p>
+        <p class="info-note">工作日 9:00 - 18:00</p>
       </div>
       <div class="panel info-card">
         <span class="info-icon">💬</span>
-        <h2 class="info-title">{{ t('contact.wechatTitle') }}</h2>
+        <h2 class="info-title">客服微信</h2>
         <p class="info-value">xianwu-helper</p>
-        <p class="info-note">{{ t('contact.wechatNote') }}</p>
+        <p class="info-note">添加备注「社区互助」，拉你进邻居群</p>
       </div>
     </div>
 
     <!-- 留言反馈 -->
     <div class="panel form-panel">
-      <h2 class="form-title">{{ t('contact.formTitle') }}</h2>
-      <p class="form-sub muted">{{ t('contact.formSub') }}</p>
+      <h2 class="form-title">📝 留言反馈</h2>
+      <p class="form-sub muted">留下你的问题或建议，我们会尽快回复</p>
 
       <el-form label-position="top" @submit.prevent="submitFeedback">
         <div class="form-row">
-          <el-form-item :label="t('contact.nameLabel')" required>
-            <el-input v-model="form.name" :placeholder="t('contact.namePlaceholder')" maxlength="20" />
+          <el-form-item label="姓名" required>
+            <el-input v-model="form.name" placeholder="怎么称呼你？" maxlength="20" />
           </el-form-item>
-          <el-form-item :label="t('contact.contactLabel')" required>
+          <el-form-item label="联系方式" required>
             <el-input
               v-model="form.contact"
-              :placeholder="t('contact.contactPlaceholder')"
+              placeholder="手机号 / 微信号 / 邮箱"
               maxlength="50"
             />
           </el-form-item>
         </div>
-        <el-form-item :label="t('contact.messageLabel')" required>
+        <el-form-item label="留言内容" required>
           <el-input
             v-model="form.message"
             type="textarea"
             :rows="5"
             maxlength="300"
             show-word-limit
-            :placeholder="t('contact.messagePlaceholder')"
+            placeholder="写下你想对社区说的话、遇到的问题或改进建议……"
           />
         </el-form-item>
         <div class="form-actions">
           <el-button type="primary" native-type="submit" :loading="submitting">
-            {{ t('contact.submit') }}
+            提交留言
           </el-button>
         </div>
       </el-form>
@@ -69,9 +69,6 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useI18n } from '../i18n'
-
-const { t } = useI18n()
 
 const form = reactive({
   name: '',
@@ -83,7 +80,7 @@ const submitting = ref(false)
 
 async function submitFeedback() {
   if (!form.name.trim() || !form.contact.trim() || !form.message.trim()) {
-    ElMessage.warning(t('contact.validateIncomplete'))
+    ElMessage.warning('请填写完整姓名、联系方式与留言内容')
     return
   }
 
@@ -91,7 +88,7 @@ async function submitFeedback() {
   submitting.value = true
   try {
     await new Promise((resolve) => setTimeout(resolve, 600))
-    ElMessage.success(t('contact.submitSuccess'))
+    ElMessage.success('留言已提交，感谢你的反馈！我们会尽快回复你 🌿')
     Object.assign(form, { name: '', contact: '', message: '' })
   } finally {
     submitting.value = false

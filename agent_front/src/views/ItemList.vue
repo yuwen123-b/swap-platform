@@ -2,27 +2,27 @@
   <section class="page explore-page">
     <div class="heading-row">
       <div>
-        <div class="eyebrow">{{ t('itemList.eyebrow') }}</div>
+        <div class="eyebrow">社区好物</div>
         <h1 class="page-title">
-          {{ t('itemList.titleLead') }}<span class="gradient-text">{{ t('itemList.titleHighlight') }}</span>
+          正在流动的<span class="gradient-text">温暖物品</span>
         </h1>
       </div>
       <el-button type="primary" class="upload-trigger" @click="openUploadDialog">
-        {{ t('itemList.uploadBtn') }}
+        上传物品
       </el-button>
     </div>
 
     <div class="filters glass-card">
       <el-input
         v-model="filters.keyword"
-        :placeholder="t('itemList.searchPlaceholder')"
+        placeholder="搜索物品名称或描述"
         clearable
         @keyup.enter="search"
         @clear="search"
       />
       <el-select
         v-model="filters.category_id"
-        :placeholder="t('itemList.categoryAll')"
+        placeholder="全部分类"
         clearable
         @change="search"
       >
@@ -30,23 +30,23 @@
       </el-select>
       <el-select
         v-model="filters.exchange_mode"
-        :placeholder="t('itemList.modeAll')"
+        placeholder="全部方式"
         clearable
         @change="search"
       >
-        <el-option :label="t('itemList.modeGift')" value="1" />
-        <el-option :label="t('itemList.modeSwap')" value="2" />
-        <el-option :label="t('itemList.modeLowPrice')" value="3" />
+        <el-option label="赠送" value="1" />
+        <el-option label="交换" value="2" />
+        <el-option label="低价转让" value="3" />
       </el-select>
-      <el-button type="primary" @click="search">{{ t('common.search') }}</el-button>
+      <el-button type="primary" @click="search">搜索</el-button>
     </div>
 
     <div class="sort-row glass-card">
-      <span class="sort-label">{{ t('itemList.sortLabel') }}</span>
+      <span class="sort-label">排序：</span>
       <el-radio-group v-model="sortBy" @change="onSortChange">
-        <el-radio-button value="created_at">{{ t('itemList.sortLatest') }}</el-radio-button>
-        <el-radio-button value="distance">{{ t('itemList.sortNearest') }}</el-radio-button>
-        <el-radio-button value="carbon_value">{{ t('itemList.sortCarbon') }}</el-radio-button>
+        <el-radio-button value="created_at">最新发布</el-radio-button>
+        <el-radio-button value="distance">离我最近</el-radio-button>
+        <el-radio-button value="carbon_value">碳减排最多</el-radio-button>
       </el-radio-group>
     </div>
 
@@ -80,11 +80,11 @@
               <div class="item-meta">
                 <span class="meta">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  {{ t('itemList.distanceLocal') }}
+                  本社区
                 </span>
                 <span class="meta carbon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
-                  {{ t('itemList.carbonLabel', { value: item.carbon }) }}
+                  减碳 {{ item.carbon }}kg
                 </span>
               </div>
             </div>
@@ -95,14 +95,14 @@
       <!-- 绿色空状态 -->
       <div v-else-if="!loading && !loadError" class="green-empty">
         <span class="green-empty-icon">🌿</span>
-        <p class="green-empty-text">{{ t('itemList.emptyText') }}</p>
+        <p class="green-empty-text">暂时没有找到符合条件的物品哦～</p>
       </div>
 
       <!-- 距离排序等开发中提示 -->
       <el-alert
         v-if="showDistanceTip && !loading"
         class="load-error"
-        :title="t('itemList.distanceTip')"
+        title="距离排序功能开发中"
         type="info"
         show-icon
         :closable="false"
@@ -110,8 +110,8 @@
       <el-alert
         v-if="loadError && !loading"
         class="load-error"
-        :title="t('itemList.loadFailedTitle')"
-        :description="t('itemList.loadFailedDesc')"
+        title="物品列表加载失败"
+        description="请检查网络后稍后再试，或调整筛选条件。"
         type="warning"
         show-icon
         :closable="false"
@@ -128,20 +128,20 @@
       />
     </div>
 
-    <el-dialog v-model="uploadVisible" :title="t('itemList.dialogTitle')" width="560px" destroy-on-close>
+    <el-dialog v-model="uploadVisible" title="上传物品" width="560px" destroy-on-close>
       <el-form label-position="top" @submit.prevent="submitUpload">
-        <el-form-item :label="t('itemList.formTitle')" required>
-          <el-input v-model="uploadForm.title" :placeholder="t('itemList.formTitlePlaceholder')" />
+        <el-form-item label="物品名称" required>
+          <el-input v-model="uploadForm.title" placeholder="例如：九成新儿童自行车" />
         </el-form-item>
-        <el-form-item :label="t('itemList.formDesc')" required>
+        <el-form-item label="物品描述" required>
           <el-input
             v-model="uploadForm.description"
             type="textarea"
             :rows="4"
-            :placeholder="t('itemList.formDescPlaceholder')"
+            placeholder="描述物品状况、使用情况等"
           />
         </el-form-item>
-        <el-form-item :label="t('itemList.formImage')">
+        <el-form-item label="物品图片">
           <input
             ref="imageInput"
             class="image-input"
@@ -150,24 +150,24 @@
             @change="handleImageChange"
           />
           <div v-if="imagePreview" class="image-preview-wrap">
-            <img class="image-preview" :src="imagePreview" :alt="t('itemList.formImagePreview')" />
-            <el-button link type="danger" @click="clearImage">{{ t('itemList.removeImage') }}</el-button>
+            <img class="image-preview" :src="imagePreview" alt="物品图片预览" />
+            <el-button link type="danger" @click="clearImage">移除图片</el-button>
           </div>
         </el-form-item>
-        <el-form-item :label="t('itemList.formCategory')" required>
-          <el-select v-model="uploadForm.category_id" :placeholder="t('itemList.selectCategory')" class="form-control">
+        <el-form-item label="分类" required>
+          <el-select v-model="uploadForm.category_id" placeholder="选择分类" class="form-control">
             <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="t('itemList.formExpected')">
-          <el-input v-model="uploadForm.expected_exchange" :placeholder="t('itemList.formExpectedPlaceholder')" />
+        <el-form-item label="期望交换物品">
+          <el-input v-model="uploadForm.expected_exchange" placeholder="例如：绘本、儿童玩具" />
         </el-form-item>
-        <el-form-item :label="t('itemList.formContact')" required>
-          <el-input v-model="uploadForm.contact" :placeholder="t('itemList.formContactPlaceholder')" />
+        <el-form-item label="联系方式" required>
+          <el-input v-model="uploadForm.contact" placeholder="手机号、微信号或其他联系方式" />
         </el-form-item>
         <div class="dialog-actions">
-          <el-button @click="uploadVisible = false">{{ t('common.cancel') }}</el-button>
-          <el-button type="primary" native-type="submit" :loading="uploading">{{ t('itemList.submitUpload') }}</el-button>
+          <el-button @click="uploadVisible = false">取消</el-button>
+          <el-button type="primary" native-type="submit" :loading="uploading">提交上传</el-button>
         </div>
       </el-form>
     </el-dialog>
@@ -180,9 +180,7 @@ import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { getItems, getCategories, uploadItem } from '../api/item'
-import { useI18n } from '../i18n'
 
-const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
@@ -220,15 +218,14 @@ const uploadForm = reactive({
 const FALLBACK_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='420'%3E%3Crect width='100%25' height='100%25' fill='%23E8F5E9'/%3E%3Cg fill='none' stroke='%234CAF50' stroke-width='6' stroke-linecap='round'%3E%3Cpath d='M300 250c-20-52-62-76-102-72-40 4-64 34-62 70 2 34 28 56 64 56h98c34 0 60-22 62-54 2-34-20-62-58-66-38-4-78 18-96 66'/%3E%3C/g%3E%3C/svg%3E"
 
-/* ---------- 交换模式 / 成色文案：渲染时走 i18n，语言切换即时生效 ---------- */
-const MODE_KEY = { 1: 'modeGift', 2: 'modeSwap', 3: 'modeLowPrice' }
+/* ---------- 交换模式 / 成色文案 ---------- */
+const MODE_TEXT = { 1: '赠送', 2: '交换', 3: '低价转让' }
 function modeText(code) {
-  return t(`itemList.${MODE_KEY[Number(code)] || 'modeSwap'}`)
+  return MODE_TEXT[Number(code)] || '交换'
 }
+const CONDITION_TEXT = { 1: '成色一般', 2: '七成新', 3: '八成新', 4: '九成新', 5: '几乎全新' }
 function conditionText(level) {
-  const key = `home.condition${level}`
-  const text = t(key)
-  return text === key ? t('itemList.conditionGood') : text
+  return CONDITION_TEXT[level] || '状态良好'
 }
 
 /* ---------- 字段归一化：接口数据统一为卡片展示结构 ---------- */
@@ -329,7 +326,7 @@ async function load() {
 
 function openUploadDialog() {
   if (!userStore.isLoggedIn) {
-    ElMessage.warning(t('itemList.loginRequiredTip'))
+    ElMessage.warning('请先登录后再上传物品')
     router.push('/login?redirect=/items')
     return
   }
@@ -364,7 +361,7 @@ function resetUploadForm() {
 
 async function submitUpload() {
   if (!uploadForm.title || !uploadForm.description || !uploadForm.category_id || !uploadForm.contact) {
-    ElMessage.warning(t('itemList.fillRequiredTip'))
+    ElMessage.warning('请填写物品名称、描述、分类和联系方式')
     return
   }
 
@@ -380,12 +377,12 @@ async function submitUpload() {
   try {
     await uploadItem(formData)
     // 提交后进入待审核（status=4），审核通过前不出现在列表中，故不刷新列表
-    ElMessage.success(t('itemList.submitOk'))
-    ElMessage.info(t('itemList.panoTip'))
+    ElMessage.success('提交成功，等待审核通过后展示')
+    ElMessage.info('360° 效果生成中，完成后可在物品详情页查看')
     uploadVisible.value = false
     resetUploadForm()
   } catch (error) {
-    ElMessage.error(error.message || t('itemList.uploadFailedTip'))
+    ElMessage.error(error.message || '物品上传失败，请稍后重试')
   } finally {
     uploading.value = false
   }

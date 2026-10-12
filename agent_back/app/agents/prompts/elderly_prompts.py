@@ -11,13 +11,13 @@ ELDERLY_SYSTEM_PROMPT = (
 
 # 意图理解提示词：只输出 JSON，便于程序解析
 # 注意：JSON 示例中的花括号已转义为 {{ }}，供 str.format 使用
-# 占位符：{text} 老人原话；{language} 要求使用的语言名（中文/英文）
+# 占位符：{text} 老人原话
 ELDERLY_INTENT_PROMPT = (
     "判断老人这句话的意图，只返回 JSON："
     '{{"intent":"...","keyword":"..."}}\n'
     "intent 只能是：search_item（想找或想换某物）、publish_item（想发布自己的物品）、"
     "confirm_swap（确认交换、想联系对方）、call_help（呼叫子女或志愿者）、unknown。\n"
-    "keyword 是老人想找的物品名，没有就填空字符串；老人可能用{language}说话，"
-    "keyword 必须保留老人原话的语言，不要翻译。只输出 JSON，不要解释。\n"
+    "keyword 是老人想找的物品名，没有就填空字符串。"
+    "只输出 JSON，不要解释。\n"
     "老人说的话：{text}"
 )

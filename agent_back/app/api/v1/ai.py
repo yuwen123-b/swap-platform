@@ -4,7 +4,7 @@ import uuid
 from decimal import Decimal
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.core.config import settings
@@ -12,7 +12,7 @@ from app.core.response import success
 from app.core.security import get_current_user_id
 from app.db.pool import connection
 from app.schemas.pricing import PricingRequest
-from app.services import agent, recognition_service, translation_service
+from app.services import agent, recognition_service
 from app.services.ai_log import log_ai_call
 
 router = APIRouter()
@@ -58,16 +58,15 @@ def pricing_history(page: int = Query(1, ge=1), size: int = Query(10, ge=1, le=1
 
 
 @router.get("/agent/stream")
-def agent_stream(question: str = Query(..., min_length=1, max_length=500), accept_language: str = Header(default="zh"), user_id: int = Depends(get_current_user_id)):
-    """智能体助手 SSE 流式问答。帧格式：data: {"msg": "..."}，结束帧 msg=[end_stream]。按 Accept-Language 语言回复。"""
-    lang = translation_service.normalize_request_lang(accept_language)
+def agent_stream(question: str = Query(..., min_length=1, max_length=500), user_id: int = Depends(get_current_user_id)):
+    """智能体助手 SSE 流式问答。帧格式：data: {"msg": "..."}，结束帧 msg=[end_stream]。"""
     start = time.perf_counter()
     parts: list[str] = []
 
     def event_source():
         status, error = 1, None
         try:
-            for token in agent.stream_tokens(question, lang):
+            for token in agent.stream_tokens(question, "zh"):
                 parts.append(token)
                 yield f"data: {json.dumps({'msg': token}, ensure_ascii=False)}\n\n"
         except Exception as exc:  # 流中异常：告知前端并留日志
@@ -91,9 +90,8 @@ def agent_stream(question: str = Query(..., min_length=1, max_length=500), accep
 
 
 @router.post("/recognition")
-def recognition(image: UploadFile = File(...), accept_language: str = Header(default="zh"), user_id: int = Depends(get_current_user_id)):
-    """AI 物体识别：上传图片返回物品名称/建议分类/成色/描述/标签，按 Accept-Language 语言输出。"""
-    lang = translation_service.normalize_request_lang(accept_language)
+def recognition(image: UploadFile = File(...), user_id: int = Depends(get_current_user_id)):
+    """AI 物体识别：上传图片返回物品名称/建议分类/成色/描述/标签。"""
     start = time.perf_counter()
     ext = ALLOWED_IMAGE_TYPES.get(image.content_type or "")
     if not ext:
@@ -110,7 +108,7 @@ def recognition(image: UploadFile = File(...), accept_language: str = Header(def
     (rec_dir / filename).write_bytes(data)
     image_url = f"{settings.api_prefix}/static/recognition/{filename}"
 
-    result = recognition_service.recognize_with_fallback(data, image.content_type or "image/jpeg", lang)
+    result = recognition_service.recognize_with_fallback(data, image.content_type or "image/jpeg", "zh")
     log_ai_call(
         "recognition",
         {"user_id": user_id, "filename": image.filename},

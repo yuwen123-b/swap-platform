@@ -1,14 +1,14 @@
 <template>
   <div class="elderly-page">
-    <h1 class="page-title">{{ t('elderlyMode.title') }}</h1>
-    <p class="page-subtitle">{{ t('elderlyMode.subtitle') }}</p>
+    <h1 class="page-title">助老模式</h1>
+    <p class="page-subtitle">按住说话，我来帮您</p>
 
     <!-- 结果区：三态卡片 -->
     <section class="result-area" aria-live="polite">
       <ElderlyCard v-if="card" :card="card" @view-item="goItem" />
-      <p v-else class="empty-tip">{{ t('elderlyMode.empty') }}</p>
+      <p v-else class="empty-tip">您可以说：我想换电饭煲</p>
 
-      <p v-if="heardText" class="heard">{{ t('elderlyMode.heard') }}：{{ heardText }}</p>
+      <p v-if="heardText" class="heard">我听到的是：{{ heardText }}</p>
       <p v-if="replyText" class="reply">{{ replyText }}</p>
       <p v-if="errorTip" class="error-tip" role="alert">{{ errorTip }}</p>
     </section>
@@ -20,13 +20,13 @@
     <button
       class="help-btn"
       type="button"
-      :aria-label="t('elderlyMode.callHelp')"
+      aria-label="呼叫子女/志愿者"
       @click="onCallHelp"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>
       </svg>
-      <span>{{ t('elderlyMode.callHelp') }}</span>
+      <span>呼叫子女/志愿者</span>
     </button>
   </div>
 </template>
@@ -37,10 +37,8 @@ import { useRouter } from 'vue-router'
 import VoiceInput from '../components/VoiceInput.vue'
 import ElderlyCard from '../components/ElderlyCard.vue'
 import { elderlyInteract, callHelp } from '../api/elderly'
-import { useI18n } from '../i18n'
 import { useUserStore } from '../store/user'
 
-const { t, state } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 userStore.hydrate()
@@ -92,9 +90,9 @@ async function send(formData) {
     if (action?.type === 'navigate' && action.path) router.push(action.path)
   } catch (err) {
     if (err?.response?.status === 503) {
-      errorTip.value = t('elderlyMode.asrUnavailable')
+      errorTip.value = '语音识别暂不可用，请改用文字输入'
     } else {
-      errorTip.value = t('common.genericError')
+      errorTip.value = '操作失败，请稍后再试'
     }
   }
 }
@@ -103,7 +101,7 @@ function onAudio(blob) {
   const fd = new FormData()
   fd.append('audio', blob, 'recording.webm')
   fd.append('user_id', String(userId()))
-  fd.append('lang', state.locale)
+  fd.append('lang', 'zh')
   send(fd)
 }
 
@@ -111,19 +109,19 @@ function onText(text) {
   const fd = new FormData()
   fd.append('text', text)
   fd.append('user_id', String(userId()))
-  fd.append('lang', state.locale)
+  fd.append('lang', 'zh')
   send(fd)
 }
 
 async function onCallHelp() {
   errorTip.value = ''
   try {
-    await callHelp({ user_id: userId(), context: heardText.value || replyText.value, lang: state.locale })
-    replyText.value = t('elderlyMode.helpCalled')
-    card.value = { status: 'contacted', label: t('elderlyMode.cardContacted') }
-    speak({ text: t('elderlyMode.helpCalled'), sentences: [t('elderlyMode.helpCalled')], rate: 0.8, voice: 'zh-CN' })
+    await callHelp({ user_id: userId(), context: heardText.value || replyText.value, lang: 'zh' })
+    replyText.value = '已通知您的紧急联系人'
+    card.value = { status: 'contacted', label: '已帮您联系' }
+    speak({ text: '已通知您的紧急联系人', sentences: ['已通知您的紧急联系人'], rate: 0.8, voice: 'zh-CN' })
   } catch {
-    errorTip.value = t('common.genericError')
+    errorTip.value = '操作失败，请稍后再试'
   }
 }
 

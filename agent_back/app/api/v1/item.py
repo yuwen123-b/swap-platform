@@ -2,13 +2,12 @@ import json
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 
 from app.core.config import settings
 from app.core.response import success
 from app.core.security import get_current_user_id
 from app.db.pool import connection
-from app.services import translation_service
 
 router = APIRouter()
 
@@ -22,7 +21,7 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 
 @router.get("")
-def list_items(page: int = Query(1, ge=1), size: int = Query(12, ge=1, le=100), category_id: int | None = None, exchange_mode: str | None = None, keyword: str | None = None, sort_by: str | None = None, status: int = 1, accept_language: str = Header(default="zh")):
+def list_items(page: int = Query(1, ge=1), size: int = Query(12, ge=1, le=100), category_id: int | None = None, exchange_mode: str | None = None, keyword: str | None = None, sort_by: str | None = None, status: int = 1):
     conditions = ["i.status=%s"]
     params: list = [status]
     if category_id:
@@ -67,18 +66,11 @@ def list_items(page: int = Query(1, ge=1), size: int = Query(12, ge=1, le=100), 
     # 列表不透出 panorama_views 大 JSON（仅保留 panorama_status 供卡片 360° 角标）
     for it in items:
         it["panorama_views"] = None
-    # 英文模式：并发翻译标题与描述（内部带缓存）
-    lang = translation_service.normalize_request_lang(accept_language)
-    if items and lang == "en":
-        titles = translation_service.translate_many([it["title"] or "" for it in items], "en")
-        descs = translation_service.translate_many([it["description"] or "" for it in items], "en")
-        for it, t, d in zip(items, titles, descs):
-            it["title"], it["description"] = t, d
     return success({"items": items, "total": total, "page": page, "size": size})
 
 
 @router.get("/{item_id}")
-def get_item(item_id: int, accept_language: str = Header(default="zh")):
+def get_item(item_id: int):
     with connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT * FROM item WHERE id=%s LIMIT 1", (item_id,))
@@ -95,10 +87,6 @@ def get_item(item_id: int, accept_language: str = Header(default="zh")):
                 item["panorama_views"] = views
         except (TypeError, ValueError):
             pass
-    lang = translation_service.normalize_request_lang(accept_language)
-    if lang == "en":
-        item["title"] = translation_service.translate_text(item["title"], "en")
-        item["description"] = translation_service.translate_text(item["description"], "en")
     return success(item)
 
 

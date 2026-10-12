@@ -1,86 +1,86 @@
 <template>
   <div class="page profile-page">
-    <p class="eyebrow">{{ t('profile.title') }}</p>
-    <h1 class="page-title">{{ t('profile.title') }}</h1>
-    <p class="lead">{{ t('profile.subtitle') }}</p>
+    <p class="eyebrow">个人中心</p>
+    <h1 class="page-title">个人中心</h1>
+    <p class="lead">管理你的资料、语言与无障碍设置，配置会保存到账号</p>
 
     <!-- 基础信息 -->
     <section class="profile-card glass-card">
-      <h2 class="card-title">{{ t('profile.basicSection') }}</h2>
+      <h2 class="card-title">基础信息</h2>
       <div class="basic-row">
-        <div class="avatar-circle" :aria-label="t('profile.avatar')">
+        <div class="avatar-circle" aria-label="头像">
           {{ avatarText }}
         </div>
         <div class="basic-meta">
-          <div class="meta-label">{{ t('profile.nickname') }}</div>
-          <div class="meta-value">{{ userStore.user?.nickname || t('common.resident') }}</div>
+          <div class="meta-label">昵称</div>
+          <div class="meta-value">{{ userStore.user?.nickname || '居民' }}</div>
         </div>
       </div>
     </section>
 
     <!-- 无障碍设置 -->
     <section class="profile-card glass-card">
-      <h2 class="card-title">{{ t('profile.accessibilitySection') }}</h2>
+      <h2 class="card-title">无障碍设置</h2>
 
       <!-- 助老模式 -->
       <div class="setting-item">
         <div class="setting-text">
-          <div class="setting-name">{{ t('profile.elderlySwitch') }}</div>
-          <div class="setting-desc">{{ t('profile.elderlyDesc') }}</div>
+          <div class="setting-name">助老模式</div>
+          <div class="setting-desc">开启后界面放大、语音优先，适合老年用户</div>
         </div>
-        <el-switch v-model="form.elderlyMode" size="large" :aria-label="t('profile.elderlySwitch')" />
+        <el-switch v-model="form.elderlyMode" size="large" aria-label="助老模式" />
       </div>
 
       <!-- 无障碍模式 -->
       <div class="setting-item column">
         <div class="setting-text">
-          <div class="setting-name">{{ t('profile.accessibleMode') }}</div>
-          <div class="setting-desc">{{ t('profile.accessibleDesc') }}</div>
+          <div class="setting-name">无障碍模式</div>
+          <div class="setting-desc">选择后系统自动调整交互方式和交接方式推荐</div>
         </div>
         <el-radio-group v-model="form.accessibilityMode" class="mode-group">
-          <el-radio-button value="normal">{{ t('profile.modeNormal') }}</el-radio-button>
-          <el-radio-button value="visually_impaired">{{ t('profile.modeVisual') }}</el-radio-button>
-          <el-radio-button value="mobility_impaired">{{ t('profile.modeMobility') }}</el-radio-button>
+          <el-radio-button value="normal">普通</el-radio-button>
+          <el-radio-button value="visually_impaired">视障模式</el-radio-button>
+          <el-radio-button value="mobility_impaired">肢体障碍模式</el-radio-button>
         </el-radio-group>
       </div>
 
       <!-- 行动能力：仅肢体障碍模式显示 -->
       <div v-if="form.accessibilityMode === 'mobility_impaired'" class="setting-item column">
         <div class="setting-text">
-          <div class="setting-name">{{ t('profile.mobilityLevel') }}</div>
+          <div class="setting-name">行动能力</div>
         </div>
         <el-radio-group v-model="form.mobilityLevel" class="mode-group">
-          <el-radio-button value="free">{{ t('accessibleMode.mobilityFree') }}</el-radio-button>
-          <el-radio-button value="limited">{{ t('accessibleMode.mobilityLimited') }}</el-radio-button>
-          <el-radio-button value="assisted">{{ t('accessibleMode.mobilityAssisted') }}</el-radio-button>
+          <el-radio-button value="free">自如</el-radio-button>
+          <el-radio-button value="limited">受限</el-radio-button>
+          <el-radio-button value="assisted">需协助</el-radio-button>
         </el-radio-group>
       </div>
 
       <!-- 高对比度 -->
       <div class="setting-item">
         <div class="setting-text">
-          <div class="setting-name">{{ t('profile.highContrastSwitch') }}</div>
-          <div class="setting-desc">{{ t('profile.highContrastDesc') }}</div>
+          <div class="setting-name">高对比度</div>
+          <div class="setting-desc">黑底白字，更强对比，适合弱视用户</div>
         </div>
-        <el-switch v-model="form.highContrast" size="large" :aria-label="t('profile.highContrastSwitch')" />
+        <el-switch v-model="form.highContrast" size="large" aria-label="高对比度" />
       </div>
 
       <el-button type="primary" class="save-btn" :loading="saving" @click="onSave">
-        {{ t('profile.save') }}
+        保存设置
       </el-button>
     </section>
 
     <!-- 交互向导（原独立页面保留为向导，从个人中心进入） -->
     <section class="profile-card glass-card">
-      <h2 class="card-title">{{ t('profile.wizardSection') }}</h2>
+      <h2 class="card-title">交互向导</h2>
       <div class="wizard-row">
         <RouterLink to="/elderly" class="wizard-entry">
-          <span class="wizard-name">{{ t('elderlyMode.wizardEntry') }}</span>
-          <span class="wizard-desc">{{ t('elderlyMode.wizardEntryDesc') }}</span>
+          <span class="wizard-name">语音助手向导</span>
+          <span class="wizard-desc">打开大字语音交互页面</span>
         </RouterLink>
         <RouterLink to="/accessible" class="wizard-entry">
-          <span class="wizard-name">{{ t('accessibleMode.wizardEntry') }}</span>
-          <span class="wizard-desc">{{ t('accessibleMode.wizardEntryDesc') }}</span>
+          <span class="wizard-name">无障碍交互向导</span>
+          <span class="wizard-desc">打开语音标签与交接方式演示页</span>
         </RouterLink>
       </div>
     </section>
@@ -91,10 +91,8 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { useI18n } from '../i18n'
 import { useUserStore } from '../store/user'
 import { useProfileStore } from '../store/profile'
-const { t } = useI18n()
 const userStore = useUserStore()
 const profileStore = useProfileStore()
 const router = useRouter()
@@ -111,7 +109,7 @@ const form = reactive({
 // 头像兜底：昵称首字
 const avatarText = computed(() => {
   const name = userStore.user?.nickname || ''
-  return name ? name.charAt(0).toUpperCase() : t('common.resident').charAt(0)
+  return name ? name.charAt(0).toUpperCase() : '居民'.charAt(0)
 })
 
 // 全局档案 -> 本地表单（fetchProfile 返回后也会同步）
@@ -133,13 +131,13 @@ watch(
 
 // 未登录不应到达此页（路由守卫也会拦截），双保险
 if (!userStore.isLoggedIn) {
-  ElMessage.warning(t('profile.loginFirst'))
+  ElMessage.warning('请先登录后再保存个人设置')
   router.replace({ path: '/login', query: { redirect: '/profile' } })
 }
 
 async function onSave() {
   if (!userStore.isLoggedIn) {
-    ElMessage.warning(t('profile.loginFirst'))
+    ElMessage.warning('请先登录后再保存个人设置')
     router.push('/login')
     return
   }
@@ -151,9 +149,9 @@ async function onSave() {
       mobility_level: form.mobilityLevel,
       high_contrast: form.highContrast ? 1 : 0,
     })
-    ElMessage.success(t('profile.saveOk'))
+    ElMessage.success('设置已保存')
   } catch {
-    ElMessage.error(t('profile.saveFail'))
+    ElMessage.error('保存失败，请稍后再试')
   } finally {
     saving.value = false
   }

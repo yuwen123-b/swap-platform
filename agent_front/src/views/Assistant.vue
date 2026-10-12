@@ -4,12 +4,12 @@
     <header class="as-header">
       <div class="as-brand">
         <span class="as-mark">★</span>
-        <span class="as-title">{{ t('assistant.header.brandTitle') }}</span>
+        <span class="as-title">智能体助手</span>
       </div>
       <div class="as-sub">
-        {{ t('assistant.header.brandSub') }}
+        旧物互换 · 智能问答
         <el-button v-if="chatList.length" link class="clear-btn" @click="clearConfirm">
-          {{ t('assistant.header.clearChat') }}
+          清空对话
         </el-button>
       </div>
     </header>
@@ -20,9 +20,9 @@
         <div v-if="chatList.length === 0" class="welcome">
           <div class="welcome-greet">
             <div class="welcome-hi">
-              {{ t('assistant.welcome.hiPrefix') }}<span class="grad-text">{{ t('assistant.welcome.hiName') }}</span>
+              你好，我是<span class="grad-text">旧物互换智能助手</span>
             </div>
-            <div class="welcome-tip">{{ t('assistant.welcome.tip') }}</div>
+            <div class="welcome-tip">关于物品发布、智能匹配、交易安全、环保价值，都可以问我</div>
           </div>
           <div class="preset-grid">
             <div
@@ -46,7 +46,7 @@
             class="msg-row"
             :class="msg.role === 'user' ? 'is-user' : 'is-ai'"
           >
-            <span class="msg-avatar" :class="msg.role">{{ msg.role === 'user' ? t('assistant.chat.userAvatar') : 'AI' }}</span>
+            <span class="msg-avatar" :class="msg.role">{{ msg.role === 'user' ? '我' : 'AI' }}</span>
             <div class="msg-bubble">
               <span class="msg-text">{{ msg.content }}</span>
               <span v-if="msg.streaming" class="cursor">▍</span>
@@ -61,16 +61,16 @@
           type="textarea"
           :rows="2"
           resize="none"
-          :placeholder="t('assistant.sender.placeholder')"
+          placeholder="请输入消息...（Enter 发送，Shift+Enter 换行）"
           :disabled="isStreamLoad"
           @keydown.enter.exact.prevent="inputEnter"
         />
         <div class="sender-actions">
           <el-button v-if="!isStreamLoad" type="primary" class="send-btn" @click="inputEnter">
-            {{ t('assistant.sender.send') }}
+            发送
           </el-button>
           <el-button v-else type="danger" plain class="send-btn" @click="onStop">
-            {{ t('assistant.sender.stop') }}
+            停止
           </el-button>
         </div>
       </div>
@@ -368,16 +368,13 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useI18n } from '../i18n'
-
-const { t } = useI18n()
 
 // 预设问题（点击即发送，复用 inputEnter 逻辑）；computed 保证切换语言时响应式更新
 const presetQuestions = computed(() => [
-  t('assistant.welcome.preset1'),
-  t('assistant.welcome.preset2'),
-  t('assistant.welcome.preset3'),
-  t('assistant.welcome.preset4'),
+  '我有一台旧微波炉想换，怎么发布？',
+  '我想换一本小学三年级的数学教材，附近有吗？',
+  '怎么和对方约定交接时间和地点？',
+  "我这个月交换了3次，能上'绿色达人'榜单吗？",
 ])
 
 // 对话列表：{ role: 'user' | 'assistant', content: string, streaming?: boolean }
@@ -438,13 +435,13 @@ async function inputEnter() {
     )
     if (!resp.ok || !resp.body) {
       const text = await resp.text().catch(() => '')
-      let tip = t('assistant.error.requestFailedStatus', { status: resp.status })
+      let tip = `请求失败（${resp.status}）`
       try {
         tip = JSON.parse(text)?.message || tip
       } catch {}
       if (resp.status === 401) {
         localStorage.removeItem('token')
-        tip = t('assistant.error.loginExpired')
+        tip = '登录已过期，请重新登录'
       }
       throw new Error(tip)
     }
@@ -481,14 +478,12 @@ async function inputEnter() {
     await reader.cancel().catch(() => {})
   } catch (err) {
     if (err?.name === 'AbortError') {
-      aiMsg.content += '\n' + t('assistant.error.stoppedGenerating')
+      aiMsg.content += '\n（已停止生成）'
     } else {
       aiMsg.content =
         aiMsg.content ||
-        t('assistant.error.somethingWrong', {
-          message: err?.message || t('assistant.error.unknownError'),
-        })
-      ElMessage.error(err?.message || t('assistant.error.requestFailed'))
+        `抱歉，出了点问题：${err?.message || '未知错误'}`
+      ElMessage.error(err?.message || '请求失败')
     }
   } finally {
     aiMsg.streaming = false

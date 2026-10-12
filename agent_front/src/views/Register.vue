@@ -1,24 +1,24 @@
 <template>
   <section class="auth page">
     <div class="auth-box glass-card">
-      <div class="eyebrow">{{ t('register.eyebrow') }}</div>
-      <h1 class="auth-title">{{ t('register.title') }}</h1>
+      <div class="eyebrow">加入社区</div>
+      <h1 class="auth-title">创建你的闲物焕新账号</h1>
 
       <el-radio-group v-model="registerType" class="mode-switch">
-        <el-radio-button label="phone">{{ t('register.phoneRegister') }}</el-radio-button>
-        <el-radio-button label="email">{{ t('register.emailRegister') }}</el-radio-button>
+        <el-radio-button label="phone">手机号注册</el-radio-button>
+        <el-radio-button label="email">邮箱注册</el-radio-button>
       </el-radio-group>
 
       <el-form @submit.prevent="submit">
         <el-form-item>
-          <el-input v-model="form.nickname" :placeholder="t('register.nickname')" />
+          <el-input v-model="form.nickname" placeholder="昵称" />
         </el-form-item>
 
         <el-form-item v-if="registerType === 'phone'">
-          <el-input v-model="form.phone" :placeholder="t('register.phone')" />
+          <el-input v-model="form.phone" placeholder="手机号" />
         </el-form-item>
         <el-form-item v-else>
-          <el-input v-model="form.email" :placeholder="t('register.email')" />
+          <el-input v-model="form.email" placeholder="邮箱" />
         </el-form-item>
 
         <el-form-item>
@@ -26,15 +26,15 @@
             v-model="form.password"
             type="password"
             show-password
-            :placeholder="t('register.passwordPlaceholder')"
+            placeholder="设置密码（至少 6 位）"
           />
         </el-form-item>
 
         <el-form-item>
           <div class="code-row">
-            <el-input v-model="form.code" :placeholder="t('register.codePlaceholder')" />
+            <el-input v-model="form.code" placeholder="6 位验证码" />
             <el-button class="code-btn" @click="send" :disabled="countdown > 0">
-              {{ countdown ? t('register.resendIn', { seconds: countdown }) : t('register.getCode') }}
+              {{ countdown ? `${countdown}s 后重发` : '获取验证码' }}
             </el-button>
           </div>
         </el-form-item>
@@ -45,12 +45,12 @@
           class="full"
           :loading="loading"
         >
-          {{ t('register.submit') }}
-        </el-button>
+          创建账号
+          </el-button>
       </el-form>
 
       <p class="switch muted">
-        {{ t('register.hasAccount') }}<RouterLink to="/login">{{ t('register.loginLink') }}</RouterLink>
+        已有账号？<RouterLink to="/login">直接登录</RouterLink>
       </p>
     </div>
   </section>
@@ -61,9 +61,7 @@ import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { sendCode, register } from '../api/auth'
-import { useI18n } from '../i18n'
 
-const { t } = useI18n()
 const registerType = ref('phone')
 const form = reactive({
   nickname: '',
@@ -91,7 +89,7 @@ function validTarget() {
 async function send() {
   if (!validTarget()) {
     return ElMessage.warning(
-      registerType.value === 'phone' ? t('register.invalidPhone') : t('register.invalidEmail'),
+      registerType.value === 'phone' ? '请输入正确的手机号' : '请输入正确的邮箱',
     )
   }
   try {
@@ -101,7 +99,7 @@ async function send() {
       scene: 'register',
     })
     if (result?.debug_code) {
-      ElMessage.success(t('register.debugCode', { code: result.debug_code }))
+      ElMessage.success(`开发验证码：${result.debug_code}`)
     }
     countdown.value = 60
     timer = setInterval(() => {
@@ -123,7 +121,7 @@ async function submit() {
     form.password.length < 6 ||
     form.code.length !== 6
   ) {
-    return ElMessage.warning(t('register.fillAll'))
+    return ElMessage.warning('请完整填写注册信息')
   }
   loading.value = true
   try {
@@ -134,7 +132,7 @@ async function submit() {
       nickname: form.nickname,
       code: form.code,
     })
-    ElMessage.success(t('register.registerOk'))
+    ElMessage.success('注册成功，请登录')
     router.push('/login')
   } finally {
     loading.value = false

@@ -17,18 +17,8 @@ def _patch_db(monkeypatch, rows):
     return cursor
 
 
-def _patch_profile_lang(monkeypatch, lang="zh_CN"):
-    """用户档案语言偏好：elderly_service 以档案 preferred_lang 为准。"""
-    monkeypatch.setattr(
-        "app.services.elderly_service.accessibility_service.get_profile",
-        lambda user_id: {"preferred_lang": lang, "accessibility_mode": "normal",
-                         "mobility_level": "free"},
-    )
-
-
 def test_empty_input_returns_not_heard(monkeypatch):
-    _patch_profile_lang(monkeypatch)
-    result = elderly_service.interact(None, user_id=1, text="", lang="zh_CN")
+    result = elderly_service.interact(None, user_id=1, text="")
     assert result["intent"] == elderly_service.INTENT_UNKNOWN
     assert "再说一遍" in result["response_text"]
     assert result["action_result"]["card"] is None
@@ -36,7 +26,6 @@ def test_empty_input_returns_not_heard(monkeypatch):
 
 def test_search_item_found(monkeypatch):
     _patch_db(monkeypatch, [{"id": 7, "title": "美的电饭煲"}])
-    _patch_profile_lang(monkeypatch)
     monkeypatch.setattr(
         "app.services.elderly_service.llm_client.understand_intent",
         lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "电饭煲"},
@@ -56,7 +45,6 @@ def test_search_item_found(monkeypatch):
 
 def test_search_item_not_found(monkeypatch):
     _patch_db(monkeypatch, [])
-    _patch_profile_lang(monkeypatch)
     monkeypatch.setattr(
         "app.services.elderly_service.llm_client.understand_intent",
         lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "航母"},
@@ -66,8 +54,6 @@ def test_search_item_not_found(monkeypatch):
 
 
 def test_llm_failure_falls_back_to_rules_confirm(monkeypatch):
-    _patch_profile_lang(monkeypatch)
-
     def boom(text, prompt, **fmt):
         raise RuntimeError("LLM 不可用")
 
@@ -78,7 +64,6 @@ def test_llm_failure_falls_back_to_rules_confirm(monkeypatch):
 
 
 def test_call_help_pushes_notification(monkeypatch):
-    _patch_profile_lang(monkeypatch)
     pushed = {}
     monkeypatch.setattr(
         "app.services.elderly_service.notify_service.push_help_alert",
@@ -95,7 +80,6 @@ def test_call_help_pushes_notification(monkeypatch):
 
 
 def test_publish_intent_navigates(monkeypatch):
-    _patch_profile_lang(monkeypatch)
     monkeypatch.setattr(
         "app.services.elderly_service.llm_client.understand_intent",
         lambda text, prompt, **fmt: {"intent": "publish_item", "keyword": ""},
@@ -104,33 +88,18 @@ def test_publish_intent_navigates(monkeypatch):
     assert result["action_result"]["action"] == {"type": "navigate", "path": "/recognition"}
 
 
-def test_profile_lang_drives_reply_language(monkeypatch):
-    """档案 preferred_lang=en_US 时，即便请求传 zh_CN，回复文本也应为英文。"""
-    _patch_profile_lang(monkeypatch, lang="en_US")
-    monkeypatch.setattr(
-        "app.services.elderly_service.llm_client.understand_intent",
-        lambda text, prompt, **fmt: {"intent": "publish_item", "keyword": ""},
-    )
-    result = elderly_service.interact(None, user_id=1, text="I want to publish", lang="zh_CN")
-    # 英文文案来自后端 i18n/en_US.json，不应包含中文引导
-    assert result["response_text"]
-    assert all(ord(ch) < 0x4E00 or ord(ch) > 0x9FFF for ch in result["response_text"])
-    assert result["action_result"]["speech"]["voice"] == "en-US"
-
-
-def test_intent_prompt_contains_language_instruction():
-    """提示词必须显式要求按用户语言处理（.format 花括号转义正确）。"""
+def test_intent_prompt_format_works():
+    """提示词 .format 花括号转义正确，{text} 占位符可替换。"""
     from app.agents.prompts.elderly_prompts import ELDERLY_INTENT_PROMPT
 
-    rendered = ELDERLY_INTENT_PROMPT.format(text="我想换电饭煲", language="中文")
-    assert "中文" in rendered
+    rendered = ELDERLY_INTENT_PROMPT.format(text="我想换电饭煲")
+    assert "我想换电饭煲" in rendered
     assert '"intent"' in rendered
 
 
 def test_response_contains_entities(monkeypatch):
     """响应必须包含 entities 实体（keyword 透传，intent 不重复出现）。"""
     _patch_db(monkeypatch, [{"id": 7, "title": "美的电饭煲"}])
-    _patch_profile_lang(monkeypatch)
     monkeypatch.setattr(
         "app.services.elderly_service.llm_client.understand_intent",
         lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "电饭煲"},
@@ -142,7 +111,6 @@ def test_response_contains_entities(monkeypatch):
 def test_tts_audio_url_returned(monkeypatch):
     """已配置 TTS 时，响应的 response_audio_url 应为后端合成的静态音频地址。"""
     _patch_db(monkeypatch, [{"id": 7, "title": "美的电饭煲"}])
-    _patch_profile_lang(monkeypatch)
     monkeypatch.setattr(
         "app.services.elderly_service.llm_client.understand_intent",
         lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "电饭煲"},
@@ -159,7 +127,6 @@ def test_tts_audio_url_returned(monkeypatch):
 def test_tts_unavailable_falls_back_to_empty_url(monkeypatch):
     """TTS 不可用（返回空串）时闭环不中断：response_audio_url 为空，文本回复正常。"""
     _patch_db(monkeypatch, [{"id": 7, "title": "美的电饭煲"}])
-    _patch_profile_lang(monkeypatch)
     monkeypatch.setattr(
         "app.services.elderly_service.llm_client.understand_intent",
         lambda text, prompt, **fmt: {"intent": "search_item", "keyword": "电饭煲"},

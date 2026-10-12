@@ -8,27 +8,27 @@
             <path d="M4 20C4 20 6 14.5 10 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
         </span>
-        <span>{{ t('nav.brandLead') }}<span class="cyan">{{ t('nav.brandHighlight') }}</span></span>
+        <span>闲物<span class="cyan">焕新</span></span>
       </RouterLink>
 
       <nav class="topnav">
-        <RouterLink to="/items">{{ t('nav.explore') }}</RouterLink>
-        <RouterLink to="/recognition">{{ t('nav.identify') }}</RouterLink>
-        <RouterLink to="/pricing">{{ t('nav.pricing') }}</RouterLink>
-        <RouterLink to="/reviews">{{ t('nav.reviews') }}</RouterLink>
-        <RouterLink to="/assistant">{{ t('nav.assistant') }}</RouterLink>
-        <RouterLink to="/messages">{{ t('nav.messages') }}</RouterLink>
+        <RouterLink to="/items">探索物品</RouterLink>
+        <RouterLink to="/recognition">物品识别</RouterLink>
+        <RouterLink to="/pricing">智能定价</RouterLink>
+        <RouterLink to="/reviews">社区评价</RouterLink>
+        <RouterLink to="/assistant">智能体助手</RouterLink>
+        <RouterLink to="/messages">我的私信</RouterLink>
       </nav>
 
       <div class="account">
         <template v-if="userStore.isLoggedIn">
-          <RouterLink to="/profile" class="profile-link">{{ t('nav.profile') }}</RouterLink>
-          <span class="user-name">{{ userStore.user?.nickname || t('common.resident') }}</span>
-          <el-button link @click="userStore.logout">{{ t('nav.logout') }}</el-button>
+          <RouterLink to="/profile" class="profile-link">个人中心</RouterLink>
+          <span class="user-name">{{ userStore.user?.nickname || '居民' }}</span>
+          <el-button link @click="userStore.logout">退出</el-button>
         </template>
         <template v-else>
-          <RouterLink to="/login">{{ t('nav.login') }}</RouterLink>
-          <RouterLink to="/register" class="signup">{{ t('nav.register') }}</RouterLink>
+          <RouterLink to="/login">登录</RouterLink>
+          <RouterLink to="/register" class="signup">加入社区</RouterLink>
         </template>
       </div>
     </header>
@@ -38,7 +38,7 @@
     </main>
 
     <footer v-if="route.path !== '/'" class="site-footer">
-      {{ t('nav.slogan') }}
+      闲物焕新计划 · 让每件物品抵达下一段故事
     </footer>
 
     <!-- 助老模式：全局悬浮语音入口（个人中心开启助老模式后显示） -->
@@ -47,14 +47,14 @@
       to="/elderly"
       class="voice-fab"
       role="button"
-      :aria-label="t('elderlyMode.fabVoice')"
+      aria-label="语音助手"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <rect x="9" y="3" width="6" height="11" rx="3" />
         <path d="M5 11a7 7 0 0 0 14 0" />
         <path d="M12 18v3" />
       </svg>
-      <span>{{ t('elderlyMode.fabVoice') }}</span>
+      <span>语音助手</span>
     </RouterLink>
 
     <!-- 全局悬浮返回首页按钮（首页本身不显示） -->
@@ -62,15 +62,15 @@
       v-if="route.path !== '/'"
       class="back-home"
       type="button"
-      :title="t('nav.backHome')"
-      :aria-label="t('nav.backHome')"
+      title="返回首页"
+      aria-label="返回首页"
       @click="router.push('/')"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 10.5 12 3l9 7.5" />
         <path d="M5 9.5V21h14V9.5" />
       </svg>
-      <span>{{ t('nav.home') }}</span>
+      <span>首页</span>
     </button>
   </div>
 </template>
@@ -79,13 +79,11 @@
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { useProfileStore } from '../store/profile'
-import { useI18n } from '../i18n'
 
 const userStore = useUserStore()
 const profileStore = useProfileStore()
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
 userStore.hydrate()
 </script>
 

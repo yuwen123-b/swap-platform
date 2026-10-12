@@ -1,25 +1,25 @@
 <template>
   <section class="page">
-    <div class="eyebrow">{{ t('pricing.eyebrow') }}</div>
+    <div class="eyebrow">AI 智能定价</div>
     <h1 class="page-title">
-      {{ t('pricing.titleLead') }}<br />
-      <span class="gradient-text">{{ t('pricing.titleHighlight') }}</span>
+      给物品一个<br />
+      <span class="gradient-text">有依据的价格。</span>
     </h1>
 
     <div class="pricing-layout">
       <!-- 表单 -->
       <el-card class="form-card" shadow="never">
-        <h2 class="panel-title">{{ t('pricing.formTitle') }}</h2>
+        <h2 class="panel-title">输入物品信息</h2>
         <el-form label-position="top" @submit.prevent="estimate">
-          <el-form-item :label="t('pricing.itemName')">
-            <el-input v-model="form.item_name" :placeholder="t('pricing.itemNamePlaceholder')" />
+          <el-form-item label="物品名称">
+            <el-input v-model="form.item_name" placeholder="例如：九成新儿童自行车" />
           </el-form-item>
 
-          <el-form-item :label="t('pricing.itemCategory')">
-            <el-input v-model="form.item_category" :placeholder="t('pricing.itemCategoryPlaceholder')" />
+          <el-form-item label="物品分类">
+            <el-input v-model="form.item_category" placeholder="例如：母婴玩具" />
           </el-form-item>
 
-          <el-form-item :label="t('pricing.conditionLevel')">
+          <el-form-item label="成色等级">
             <el-rate
               v-model="form.condition_level"
               :texts="conditionTexts"
@@ -27,7 +27,7 @@
             />
           </el-form-item>
 
-          <el-form-item :label="t('pricing.originalPrice')">
+          <el-form-item label="原价（元）">
             <el-input-number
               v-model="form.original_price"
               :min="1"
@@ -42,7 +42,7 @@
             :loading="loading"
             class="full"
           >
-            {{ t('pricing.submit') }}
+            开始 AI 估价
           </el-button>
         </el-form>
       </el-card>
@@ -51,9 +51,9 @@
       <div class="result-area">
         <div v-if="result" class="result glass-card">
           <div class="result-banner">
-            <div class="eyebrow">{{ t('pricing.suggestPrice') }}</div>
+            <div class="eyebrow">建议售价</div>
             <div class="price">¥ {{ result.suggested_price }}</div>
-            <span class="rate-chip chip">{{ t('pricing.depreciation', { value: (Number(result.depreciation_rate) * 100).toFixed(1) }) }}</span>
+            <span class="rate-chip chip">折旧率 {{ (Number(result.depreciation_rate) * 100).toFixed(1) }}%</span>
           </div>
           <p class="reason muted">{{ result.pricing_reason }}</p>
         </div>
@@ -63,11 +63,11 @@
             <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
             <circle cx="12" cy="12" r="4"/>
           </svg>
-          <p>{{ t('pricing.emptyResult') }}</p>
+          <p>填写信息，获取一份透明的定价建议</p>
         </div>
 
         <div class="history" v-if="history.length">
-          <h2 class="panel-title">{{ t('pricing.historyTitle') }}</h2>
+          <h2 class="panel-title">最近定价记录</h2>
           <div v-for="record in history" :key="record.id" class="history-row">
             <span class="history-name">{{ record.item_name }}</span>
             <strong>¥ {{ record.suggested_price }}</strong>
@@ -82,9 +82,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { pricing, pricingHistory } from '../api/ai'
-import { useI18n } from '../i18n'
-
-const { t } = useI18n()
 
 const form = reactive({
   item_name: '',
@@ -94,11 +91,11 @@ const form = reactive({
 })
 
 const conditionTexts = computed(() => [
-  t('pricing.c1'),
-  t('pricing.c2'),
-  t('pricing.c3'),
-  t('pricing.c4'),
-  t('pricing.c5'),
+  '较差',
+  '一般',
+  '良好',
+  '很新',
+  '全新',
 ])
 
 const result = ref(null)

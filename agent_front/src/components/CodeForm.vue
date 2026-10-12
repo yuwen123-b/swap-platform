@@ -4,7 +4,7 @@
       <el-input
         :model-value="target"
         @update:model-value="$emit('update:target', $event)"
-        :placeholder="targetType === 'email' ? t('codeForm.email') : t('codeForm.phone')"
+        :placeholder="targetType === 'email' ? '邮箱' : '手机号'"
       />
     </el-form-item>
 
@@ -13,15 +13,15 @@
         <el-input
           :model-value="code"
           @update:model-value="$emit('update:code', $event)"
-          :placeholder="t('codeForm.codePlaceholder')"
+          placeholder="6 位验证码"
         />
         <el-button class="code-btn" @click="send" :disabled="countdown > 0">
-          {{ countdown ? t('codeForm.retryIn', { seconds: countdown }) : t('codeForm.sendCode') }}
+          {{ countdown ? `${countdown}s 后重试` : '发送验证码' }}
         </el-button>
       </div>
     </el-form-item>
 
-    <el-button type="primary" native-type="submit" class="full">{{ t('codeForm.login') }}</el-button>
+    <el-button type="primary" native-type="submit" class="full">登录</el-button>
   </el-form>
 </template>
 
@@ -29,9 +29,6 @@
 import { ref } from 'vue'
 import { sendCode } from '../api/auth'
 import { ElMessage } from 'element-plus'
-import { useI18n } from '../i18n'
-
-const { t } = useI18n()
 
 const props = defineProps({
   target: String,
@@ -45,7 +42,7 @@ let timer = null
 
 async function send() {
   if (!props.target) {
-    return ElMessage.warning(t('codeForm.fillAccount'))
+    return ElMessage.warning('请先填写账号')
   }
   try {
     const result = await sendCode({
@@ -54,7 +51,7 @@ async function send() {
       scene: 'login',
     })
     if (result?.debug_code) {
-      ElMessage.success(t('codeForm.debugCode', { code: result.debug_code }))
+      ElMessage.success(`开发验证码：${result.debug_code}`)
     }
     countdown.value = 60
     timer = setInterval(() => {

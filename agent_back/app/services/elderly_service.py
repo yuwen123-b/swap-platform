@@ -9,8 +9,7 @@ from pathlib import Path
 
 from app.agents.prompts.elderly_prompts import ELDERLY_INTENT_PROMPT
 from app.db.pool import connection
-from app.services import accessibility_service, llm_client, notify_service, voice_service
-from app.utils.i18n import get_text, lang_name, normalize_lang
+from app.services import llm_client, notify_service, voice_service
 
 # 意图枚举
 INTENT_SEARCH = "search_item"
@@ -40,22 +39,12 @@ def _rule_intent(text: str) -> dict:
     return {"intent": INTENT_UNKNOWN, "keyword": ""}
 
 
-def _understand(text: str, lang: str) -> dict:
-    """意图理解：优先 LLM，异常时规则兜底。提示词按用户档案语言要求输出。"""
+def _understand(text: str) -> dict:
+    """意图理解：优先 LLM，异常时规则兜底。"""
     try:
-        return llm_client.understand_intent(
-            text, ELDERLY_INTENT_PROMPT, language=lang_name(lang)
-        )
+        return llm_client.understand_intent(text, ELDERLY_INTENT_PROMPT)
     except RuntimeError:
         return _rule_intent(text)
-
-
-def _resolve_lang(user_id: int, fallback: str) -> str:
-    """交互语言以用户档案 preferred_lang 为准；档案不可读时回退请求参数。"""
-    try:
-        return accessibility_service.get_profile(user_id)["preferred_lang"]
-    except Exception:
-        return normalize_lang(fallback)
 
 
 def _search_top_item(keyword: str) -> dict | None:
@@ -71,18 +60,18 @@ def _search_top_item(keyword: str) -> dict | None:
             return cursor.fetchone()
 
 
-def _reply(intent: str, text: str, lang: str, card: dict | None,
+def _reply(intent: str, text: str, card: dict | None,
            heard_text: str = "", action: dict | None = None,
            entities: dict | None = None) -> dict:
     """组装助老交互响应：口语化文本 + 后端 TTS 音频 + 三态卡片 + 意图实体。"""
-    speech = voice_service.build_speech_text(text, mode="elderly", language=lang)
+    speech = voice_service.build_speech_text(text, mode="elderly", language="zh_CN")
     return {
         "intent": intent,
         # 意图实体（keyword 等），供前端与上层业务使用
         "entities": entities or {},
         "response_text": text,
         # 后端 TTS 生成语音文件；未配置密钥或合成失败时为空串，前端降级 Web Speech API
-        "response_audio_url": voice_service.synthesize(text, lang, rate=speech["rate"]),
+        "response_audio_url": voice_service.synthesize(text, "zh_CN", rate=speech["rate"]),
         "action_result": {
             "card": card,
             "speech": speech,
@@ -92,17 +81,16 @@ def _reply(intent: str, text: str, lang: str, card: dict | None,
     }
 
 
-def interact(audio_path: Path | None, user_id: int, text: str = "", lang: str = "zh_CN") -> dict:
-    """助老交互主入口：audio 与 text 至少提供一个（audio 优先）。回复语言取自用户档案。"""
-    lang = _resolve_lang(user_id, lang)
+def interact(audio_path: Path | None, user_id: int, text: str = "") -> dict:
+    """助老交互主入口：audio 与 text 至少提供一个（audio 优先）。"""
     heard_text = text.strip()
     if audio_path is not None and not heard_text:
         heard_text = voice_service.transcribe(audio_path).strip()
 
     if not heard_text:
-        return _reply(INTENT_UNKNOWN, get_text("elderly.reply.not_heard", lang), lang, None)
+        return _reply(INTENT_UNKNOWN, "抱歉，我没听清，请您再说一遍。", None)
 
-    result = _understand(heard_text, lang)
+    result = _understand(heard_text)
     intent = result.get("intent") or INTENT_UNKNOWN
     keyword = (result.get("keyword") or "").strip()
     # 意图实体：除 intent 外的键全部透传（当前为 keyword，LLM 未来扩展实体自动携带）
@@ -111,29 +99,29 @@ def interact(audio_path: Path | None, user_id: int, text: str = "", lang: str = 
     if intent == INTENT_SEARCH and keyword:
         item = _search_top_item(keyword)
         if item:
-            card = {"status": CARD_OK, "label": get_text("elderly.card.ok", lang),
+            card = {"status": CARD_OK, "label": "可以换",
                     "item_id": item["id"], "item_title": item["title"]}
-            text_out = f"{get_text('elderly.reply.found', lang)}{item['title']}"
-            return _reply(intent, text_out, lang, card, heard_text, entities=entities)
-        card = {"status": CARD_NO, "label": get_text("elderly.card.no", lang)}
-        return _reply(intent, get_text("elderly.reply.not_found", lang), lang, card,
+            text_out = f"找到了，这个可以换。{item['title']}"
+            return _reply(intent, text_out, card, heard_text, entities=entities)
+        card = {"status": CARD_NO, "label": "不行"}
+        return _reply(intent, "暂时没有，我帮您留意。", card,
                       heard_text, entities=entities)
 
     if intent == INTENT_PUBLISH:
-        return _reply(intent, get_text("elderly.reply.publish_guide", lang), lang,
+        return _reply(intent, "好的，我带您去发布页面。",
                       None, heard_text, entities=entities,
                       action={"type": "navigate", "path": "/recognition"})
 
     if intent == INTENT_CONFIRM:
-        card = {"status": CARD_CONTACTED, "label": get_text("elderly.card.contacted", lang)}
-        return _reply(intent, get_text("elderly.reply.contacted", lang), lang, card,
+        card = {"status": CARD_CONTACTED, "label": "已帮您联系"}
+        return _reply(intent, "已帮您联系对方。", card,
                       heard_text, entities=entities)
 
     if intent == INTENT_HELP:
         notify_service.push_help_alert(user_id, context=heard_text)
-        card = {"status": CARD_CONTACTED, "label": get_text("elderly.card.contacted", lang)}
-        return _reply(intent, get_text("elderly.reply.help_called", lang), lang, card,
+        card = {"status": CARD_CONTACTED, "label": "已帮您联系"}
+        return _reply(intent, "已通知您的紧急联系人。", card,
                       heard_text, entities=entities)
 
-    return _reply(INTENT_UNKNOWN, get_text("elderly.reply.not_heard", lang), lang,
+    return _reply(INTENT_UNKNOWN, "抱歉，我没听清，请您再说一遍。",
                   None, heard_text, entities=entities)

@@ -1,29 +1,29 @@
 <template>
   <section class="auth page">
     <div class="auth-box glass-card">
-      <div class="eyebrow">{{ t('login.eyebrow') }}</div>
-      <h1 class="auth-title">{{ t('login.title') }}</h1>
+      <div class="eyebrow">欢迎回来</div>
+      <h1 class="auth-title">回到闲物焕新</h1>
 
       <el-tabs v-model="mode" stretch>
         <!-- 验证码登录 -->
-        <el-tab-pane :label="t('login.tabCode')" name="code">
+        <el-tab-pane label="验证码登录" name="code">
           <el-radio-group v-model="codeType" class="mode-switch">
-            <el-radio-button label="phone">{{ t('login.phone') }}</el-radio-button>
-            <el-radio-button label="email">{{ t('login.email') }}</el-radio-button>
+            <el-radio-button label="phone">手机号</el-radio-button>
+            <el-radio-button label="email">邮箱</el-radio-button>
           </el-radio-group>
 
           <el-form @submit.prevent="loginCode">
             <el-form-item>
               <el-input
                 v-model="codeTarget"
-                :placeholder="codeType === 'phone' ? t('login.phone') : t('login.email')"
+                :placeholder="codeType === 'phone' ? '手机号' : '邮箱'"
               />
             </el-form-item>
             <el-form-item>
               <div class="code-row">
-                <el-input v-model="code" :placeholder="t('login.codePlaceholder')" />
+                <el-input v-model="code" placeholder="6 位验证码" />
                 <el-button class="code-btn" @click="send" :disabled="countdown > 0">
-                  {{ countdown ? t('login.resendIn', { seconds: countdown }) : t('login.getCode') }}
+                  {{ countdown ? `${countdown}s 后重发` : '获取验证码' }}
                 </el-button>
               </div>
             </el-form-item>
@@ -33,23 +33,23 @@
               class="full"
               :loading="loading"
             >
-              {{ t('login.login') }}
+              登录
             </el-button>
           </el-form>
         </el-tab-pane>
 
         <!-- 密码登录 -->
-        <el-tab-pane :label="t('login.tabPassword')" name="password">
+        <el-tab-pane label="密码登录" name="password">
           <el-form @submit.prevent="loginPasswordForm">
             <el-form-item>
-              <el-input v-model="email" :placeholder="t('login.email')" />
+              <el-input v-model="email" placeholder="邮箱" />
             </el-form-item>
             <el-form-item>
               <el-input
                 v-model="password"
                 type="password"
                 show-password
-                :placeholder="t('login.password')"
+                placeholder="密码"
               />
             </el-form-item>
             <el-button
@@ -58,14 +58,14 @@
               class="full"
               :loading="loading"
             >
-              {{ t('login.login') }}
+              登录
             </el-button>
           </el-form>
         </el-tab-pane>
       </el-tabs>
 
       <p class="switch muted">
-        {{ t('login.noAccount') }}<RouterLink to="/register">{{ t('login.registerLink') }}</RouterLink>
+        还没有账号？<RouterLink to="/register">注册新账号</RouterLink>
       </p>
     </div>
   </section>
@@ -82,9 +82,7 @@ import {
   sendCode,
 } from '../api/auth'
 import { useUserStore } from '../store/user'
-import { useI18n } from '../i18n'
 
-const { t } = useI18n()
 const mode = ref('code')
 const codeType = ref('phone')
 const codeTarget = ref('')
@@ -108,7 +106,7 @@ let timer = null
 
 async function send() {
   if (!validTarget.value) {
-    return ElMessage.warning(t('login.invalidAccount'))
+    return ElMessage.warning('请输入正确的账号')
   }
   try {
     const result = await sendCode({
@@ -117,7 +115,7 @@ async function send() {
       scene: 'login',
     })
     if (result?.debug_code) {
-      ElMessage.success(t('login.debugCode', { code: result.debug_code }))
+      ElMessage.success(`开发验证码：${result.debug_code}`)
     }
     countdown.value = 60
     timer = setInterval(() => {
@@ -139,7 +137,7 @@ async function finish(data) {
 
 async function loginCode() {
   if (!validTarget.value || code.value.length !== 6) {
-    return ElMessage.warning(t('login.invalidCodeLogin'))
+    return ElMessage.warning('请填写正确的账号和验证码')
   }
   loading.value = true
   try {
@@ -155,7 +153,7 @@ async function loginCode() {
 
 async function loginPasswordForm() {
   if (!email.value || !password.value) {
-    return ElMessage.warning(t('login.invalidPasswordLogin'))
+    return ElMessage.warning('请输入邮箱和密码')
   }
   loading.value = true
   try {

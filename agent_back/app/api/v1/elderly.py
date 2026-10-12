@@ -8,7 +8,6 @@ from app.core.config import settings
 from app.core.response import success
 from app.schemas.elderly import CallHelpRequest, ElderlyInteractResponse
 from app.services import elderly_service, notify_service
-from app.utils.i18n import get_text, normalize_lang
 
 router = APIRouter()
 
@@ -38,17 +37,15 @@ def elderly_interact(
     user_id: int = Form(...),
     audio: UploadFile | None = File(None),
     text: str = Form(""),
-    lang: str = Form("zh_CN"),
 ):
     """助老交互：audio 与 text 至少给一个；ASR 不可用时返回 503 由前端降级文字输入。"""
-    lang = normalize_lang(lang)
     audio_path = _save_audio(audio) if audio is not None and audio.filename else None
     if audio_path is None and not text.strip():
         raise HTTPException(400, "请提供语音或文字")
     try:
-        result: dict = elderly_service.interact(audio_path, user_id, text=text, lang=lang)
+        result: dict = elderly_service.interact(audio_path, user_id, text=text)
     except RuntimeError:
-        raise HTTPException(503, get_text("error.asr_unavailable", lang))
+        raise HTTPException(503, "语音识别暂不可用，请改用文字输入")
     return success(ElderlyInteractResponse(**result).model_dump())
 
 
@@ -56,4 +53,4 @@ def elderly_interact(
 def call_help(body: CallHelpRequest):
     """一键呼叫子女/志愿者：企微推送当前操作状态，未配置 webhook 时 mock 不阻断。"""
     pushed = notify_service.push_help_alert(body.user_id, body.context)
-    return success({"pushed": pushed}, get_text("elderly.reply.help_called", body.lang))
+    return success({"pushed": pushed}, "已通知您的紧急联系人。")

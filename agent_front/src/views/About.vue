@@ -1,30 +1,30 @@
 <template>
   <section class="page about-page">
     <div class="page-head">
-      <div class="eyebrow">{{ t('about.eyebrow') }}</div>
-      <h1 class="page-title">{{ t('about.titleLead') }}<span class="gradient-text">{{ t('about.titleHighlight') }}</span></h1>
-      <p class="page-sub muted">{{ t('about.pageSub') }}</p>
+      <div class="eyebrow">平台介绍</div>
+      <h1 class="page-title">关于<span class="gradient-text">我们</span></h1>
+      <p class="page-sub muted">让闲置流动起来，打造低碳有温度的社区</p>
     </div>
 
     <!-- 平台介绍 -->
     <div class="panel intro-panel">
-      <p class="intro-text">{{ t('about.intro') }}</p>
+      <p class="intro-text">「闲物焕新」是一个由社区居民共同参与的旧物互换智能体平台。我们相信，每一件被遗忘在角落的物品，都可能成为另一户人家的惊喜。借助 AI 物品识别与智能定价，我们让闲置物品在邻里之间重新流动——少一件丢弃，多一次相遇，让低碳生活成为一种日常的温暖。</p>
       <div class="intro-stats">
         <div class="stat">
           <span class="stat-num">12</span>
-          <span class="stat-label">{{ t('about.stats.communities') }}</span>
+          <span class="stat-label">覆盖社区</span>
         </div>
         <div class="stat">
           <span class="stat-num">320</span>
-          <span class="stat-label">{{ t('about.stats.residents') }}</span>
+          <span class="stat-label">注册居民</span>
         </div>
         <div class="stat">
           <span class="stat-num">486</span>
-          <span class="stat-label">{{ t('about.stats.swaps') }}</span>
+          <span class="stat-label">成功互换</span>
         </div>
         <div class="stat">
           <span class="stat-num">1250<span class="unit">kg</span></span>
-          <span class="stat-label">{{ t('about.stats.carbon') }}</span>
+          <span class="stat-label">累计减碳</span>
         </div>
       </div>
     </div>
@@ -33,20 +33,20 @@
     <div class="two-col">
       <div class="panel">
         <div class="panel-icon">🌱</div>
-        <h2 class="panel-title">{{ t('about.missionTitle') }}</h2>
-        <p class="panel-text">{{ t('about.missionText') }}</p>
+        <h2 class="panel-title">我们的使命</h2>
+        <p class="panel-text">让闲置物品流动起来。我们希望通过便捷的互换体验与可信的社区机制，减少资源浪费与碳排放，让每个家庭都能以更轻盈的方式获得所需，用一份信任连接彼此。</p>
       </div>
       <div class="panel">
         <div class="panel-icon">🏡</div>
-        <h2 class="panel-title">{{ t('about.visionTitle') }}</h2>
-        <p class="panel-text">{{ t('about.visionText') }}</p>
+        <h2 class="panel-title">平台愿景</h2>
+        <p class="panel-text">成为中国最值得信赖的社区低碳生活平台。我们期待在每一个社区里，交换旧物像串门一样自然；邻里之间不只是物品的流转，更有温情、故事与可持续的生活方式在流淌。</p>
       </div>
     </div>
 
     <!-- 团队介绍 -->
     <div class="section-gap">
-      <h2 class="section-title">{{ t('about.teamTitle') }}</h2>
-      <p class="muted section-desc">{{ t('about.teamDesc') }}</p>
+      <h2 class="section-title">团队介绍</h2>
+      <p class="muted section-desc">一支热爱生活、深耕社区的技术小团队</p>
       <div class="team-grid">
         <div v-for="member in team" :key="member.name" class="panel team-card">
           <span class="team-avatar">{{ member.name.charAt(0) }}</span>
@@ -60,19 +60,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useI18n } from '../i18n'
-
-const { t } = useI18n()
-
-// 团队成员：文案来自 i18n 分片，切换语言时自动更新
-const team = computed(() =>
-  ['member1', 'member2', 'member3'].map((id) => ({
-    name: t(`about.team.${id}.name`),
-    role: t(`about.team.${id}.role`),
-    bio: t(`about.team.${id}.bio`),
-  })),
-)
+const team = [
+  { name: '林晓', role: '产品发起人', bio: '在社区一线做了八年公益，相信好的产品能让邻里更亲近。发起「闲物焕新」，想让每一件旧物都被温柔以待。' },
+  { name: '陈默', role: '技术负责人', bio: '全栈工程师，主导 AI 物品识别与智能定价能力的搭建。热衷旧物改造，家里书架上一半的书都是换来的。' },
+  { name: '苏晴', role: '社区运营', bio: '熟悉社区里的每一位热心居民，策划一场场线下交换市集，把线上的约定变成广场上的笑脸相迎。' },
+]
 </script>
 
 <style scoped>

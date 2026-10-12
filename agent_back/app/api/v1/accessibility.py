@@ -6,7 +6,6 @@ from app.schemas.accessibility import (HandoverOptions, SetMobilityRequest,
                                        SetModeRequest, SetModeResponse,
                                        VoiceLabelResponse)
 from app.services import accessibility_service, match_service
-from app.utils.i18n import get_text, normalize_lang
 
 router = APIRouter()
 
@@ -36,11 +35,10 @@ def handover_options(user_id: int):
 
 
 @router.get("/voice-label/{item_id}")
-def voice_label(item_id: int, lang: str = "zh_CN"):
+def voice_label(item_id: int):
     """视障模式物品语音标签：物品名+成色+颜色+特征。"""
-    lang = normalize_lang(lang)
     try:
-        label = accessibility_service.generate_voice_label(item_id, language=lang)
+        label = accessibility_service.generate_voice_label(item_id)
     except ValueError:
-        raise HTTPException(404, get_text("error.user_not_found", lang).replace("用户", "物品"))
+        raise HTTPException(404, "物品不存在")
     return success(VoiceLabelResponse(item_id=item_id, label=label).model_dump())

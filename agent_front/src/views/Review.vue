@@ -1,38 +1,38 @@
 <template>
   <section class="page">
-    <div class="eyebrow">{{ t('review.eyebrow') }}</div>
+    <div class="eyebrow">社区信任</div>
     <h1 class="page-title">
-      {{ t('review.titleLead') }}<br />
-      <span class="gradient-text">{{ t('review.titleAccent') }}</span>
+      每一次交换，<br />
+      <span class="gradient-text">都值得被记住。</span>
     </h1>
 
     <el-tabs v-model="activeTab" class="review-tabs">
       <!-- Tab1：交换评价 -->
-      <el-tab-pane :label="t('review.tabExchange')" name="exchange">
+      <el-tab-pane label="交换评价" name="exchange">
         <div class="review-layout">
           <!-- 提交评价 -->
           <el-card class="panel form-card" shadow="never">
-            <h2 class="panel-title">{{ t('review.exchange.formTitle') }}</h2>
+            <h2 class="panel-title">留下评价</h2>
             <el-form label-position="top" @submit.prevent="submit">
-              <el-form-item :label="t('review.exchange.orderIdLabel')">
+              <el-form-item label="订单 ID">
                 <el-input-number v-model="form.order_id" :min="1" controls-position="right" />
               </el-form-item>
-              <el-form-item :label="t('review.exchange.revieweeIdLabel')">
+              <el-form-item label="被评价人 ID">
                 <el-input-number v-model="form.to_user_id" :min="1" controls-position="right" />
               </el-form-item>
-              <el-form-item :label="t('review.exchange.ratingLabel')">
+              <el-form-item label="评分">
                 <el-rate v-model="form.rating" />
               </el-form-item>
-              <el-form-item :label="t('review.exchange.contentLabel')">
+              <el-form-item label="评价内容">
                 <el-input
                   v-model="form.content"
                   type="textarea"
                   :rows="4"
-                  :placeholder="t('review.exchange.contentPlaceholder')"
+                  placeholder="分享这次交换的体验"
                 />
               </el-form-item>
               <el-button type="primary" native-type="submit" class="full">
-                {{ t('review.exchange.submit') }}
+                提交评价
               </el-button>
             </el-form>
           </el-card>
@@ -44,49 +44,49 @@
                 <strong>{{ Number(summary.average_rating).toFixed(1) }}</strong>
                 <el-rate :model-value="Number(summary.average_rating)" disabled />
               </div>
-              <span class="muted">{{ t('review.exchange.summaryCount', { count: summary.total }) }}</span>
+              <span class="muted">{{ summary.total }} 条社区评价</span>
             </div>
 
             <div class="review-list glass-card">
               <div v-for="review in reviews" :key="review.id" class="review-row">
-                <span class="review-avatar">{{ review.from_user_id || t('review.avatarFallback') }}</span>
+                <span class="review-avatar">{{ review.from_user_id || '社' }}</span>
                 <div class="review-body">
                   <el-rate :model-value="review.rating" disabled />
                   <p>{{ review.content }}</p>
-                  <small class="muted">{{ t('review.exchange.orderLabel', { id: review.order_id }) }}</small>
+                  <small class="muted">订单 #{{ review.order_id }}</small>
                 </div>
               </div>
-              <el-empty v-if="!reviews.length" :description="t('review.exchange.empty')" />
+              <el-empty v-if="!reviews.length" description="还没有评价" />
             </div>
           </div>
         </div>
       </el-tab-pane>
 
       <!-- Tab2：评价程序 -->
-      <el-tab-pane :label="t('review.tabPlatform')" name="platform">
+      <el-tab-pane label="评价程序" name="platform">
         <div class="review-layout">
           <!-- 提交程序评价 -->
           <el-card class="panel form-card" shadow="never">
-            <h2 class="panel-title">{{ t('review.feedback.formTitle') }}</h2>
+            <h2 class="panel-title">评价这个程序</h2>
             <p class="panel-desc muted">
-              {{ t('review.feedback.formDesc') }}
+              说说你使用本平台的感受，你的反馈会经过 AI 情感分析，帮助我们把社区做得更好。
             </p>
             <el-form label-position="top" @submit.prevent="submitFeedback">
-              <el-form-item :label="t('review.feedback.ratingLabel')">
+              <el-form-item label="程序评分">
                 <el-rate v-model="fbForm.rating" />
               </el-form-item>
-              <el-form-item :label="t('review.feedback.contentLabel')">
+              <el-form-item label="反馈内容">
                 <el-input
                   v-model="fbForm.content"
                   type="textarea"
                   :rows="4"
                   maxlength="500"
                   show-word-limit
-                  :placeholder="t('review.feedback.contentPlaceholder')"
+                  placeholder="例如：界面清爽好用，交换流程顺畅，希望增加消息通知功能"
                 />
               </el-form-item>
               <el-button type="primary" native-type="submit" class="full" :loading="fbLoading">
-                {{ t('review.feedback.submit') }}
+                提交反馈
               </el-button>
             </el-form>
           </el-card>
@@ -97,27 +97,27 @@
               <div class="fb-stats">
                 <div class="fb-stat">
                   <strong>{{ fbStats.total }}</strong>
-                  <span class="muted">{{ t('review.feedback.statTotal') }}</span>
+                  <span class="muted">总反馈</span>
                 </div>
                 <div class="fb-stat">
                   <strong class="tone-pos">{{ fbStats.positive }}</strong>
-                  <span class="muted">{{ t('review.feedback.statPositive') }}</span>
+                  <span class="muted">良好</span>
                 </div>
                 <div class="fb-stat">
                   <strong class="tone-neu">{{ fbStats.neutral }}</strong>
-                  <span class="muted">{{ t('review.feedback.statNeutral') }}</span>
+                  <span class="muted">中性</span>
                 </div>
                 <div class="fb-stat">
                   <strong class="tone-neg">{{ fbStats.negative }}</strong>
-                  <span class="muted">{{ t('review.feedback.statNegative') }}</span>
+                  <span class="muted">差</span>
                 </div>
               </div>
-              <span class="muted">{{ t('review.feedback.avgRating', { value: Number(fbStats.avg_rating).toFixed(1) }) }}</span>
+              <span class="muted">均分 {{ Number(fbStats.avg_rating).toFixed(1) }}</span>
             </div>
 
             <div class="review-list glass-card">
               <div v-for="fb in feedbacks" :key="fb.id" class="review-row">
-                <span class="review-avatar">{{ fb.user_id || t('review.avatarFallback') }}</span>
+                <span class="review-avatar">{{ fb.user_id || '社' }}</span>
                 <div class="review-body">
                   <div class="fb-meta">
                     <el-rate :model-value="fb.rating" disabled />
@@ -129,7 +129,7 @@
                   <small class="muted">{{ formatTime(fb.created_at) }}</small>
                 </div>
               </div>
-              <el-empty v-if="!feedbacks.length" :description="t('review.feedback.empty')" />
+              <el-empty v-if="!feedbacks.length" description="还没有程序反馈，来做第一个吧" />
             </div>
           </div>
         </div>
@@ -141,11 +141,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useI18n } from '../i18n'
 import { createReview, getReviews, getReviewSummary } from '../api/review'
 import { createFeedback, getFeedbackList } from '../api/feedback'
-
-const { t } = useI18n()
 
 const activeTab = ref('exchange')
 
@@ -175,11 +172,11 @@ async function load() {
 
 async function submit() {
   if (!form.content) {
-    return ElMessage.warning(t('review.exchange.contentRequired'))
+    return ElMessage.warning('请填写评价内容')
   }
   try {
     await createReview(form)
-    ElMessage.success(t('review.exchange.submitSuccess'))
+    ElMessage.success('评价提交成功')
     form.content = ''
     load()
   } catch {
@@ -195,11 +192,10 @@ const fbStats = ref({ total: 0, positive: 0, neutral: 0, negative: 0, avg_rating
 
 const SENTIMENT_TYPE = { positive: 'success', neutral: 'info', negative: 'danger' }
 
-// 情感文案在渲染时经 t() 取值，切换语言可响应式更新
 function sentimentText(s) {
-  if (s === 'positive') return t('review.feedback.statPositive')
-  if (s === 'negative') return t('review.feedback.statNegative')
-  return t('review.feedback.statNeutral')
+  if (s === 'positive') return '良好'
+  if (s === 'negative') return '差'
+  return '中性'
 }
 
 function sentimentType(s) {
@@ -222,12 +218,12 @@ async function loadFeedback() {
 
 async function submitFeedback() {
   if (!fbForm.content.trim()) {
-    return ElMessage.warning(t('review.feedback.contentRequired'))
+    return ElMessage.warning('请填写反馈内容')
   }
   fbLoading.value = true
   try {
     const result = await createFeedback({ rating: fbForm.rating, content: fbForm.content.trim() })
-    ElMessage.success(t('review.feedback.submitSuccess', { sentiment: result.sentiment_cn }))
+    ElMessage.success(`感谢反馈！AI 判定情感倾向：${result.sentiment_cn}`)
     fbForm.content = ''
     loadFeedback()
   } catch {

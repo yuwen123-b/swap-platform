@@ -27,17 +27,17 @@
 
       <!-- 顶层文案 -->
       <div class="hero-content">
-        <span class="hero-eyebrow">{{ t('home.heroEyebrow') }}</span>
-        <h1 class="hero-title">{{ t('home.heroTitle') }}</h1>
+        <span class="hero-eyebrow">社区 · 循环 · 智能</span>
+        <h1 class="hero-title">让闲置物品流动起来</h1>
         <p class="hero-sub">
-          {{ t('home.heroSub') }}
+          在邻里之间交换旧物，用一份信任连接彼此，让每一次分享都成为更轻盈、更温暖的生活选择。
         </p>
         <div class="hero-cta">
           <button class="cta cta-primary" type="button" @click="go('/items')">
-            {{ t('home.ctaExplore') }}
+            开始探索
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
-          <button class="cta cta-ghost" type="button" @click="go('/pricing')">{{ t('home.ctaPricing') }}</button>
+          <button class="cta cta-ghost" type="button" @click="go('/pricing')">让 AI 帮你估价</button>
         </div>
       </div>
 
@@ -71,13 +71,13 @@
         <div class="ai-left">
           <span class="ai-emoji">🤖</span>
           <div>
-            <div class="ai-title">{{ t('home.aiTitle') }}</div>
-            <div class="ai-desc">{{ t('home.aiDesc') }}</div>
+            <div class="ai-title">AI 智能管家：一键识别与估价</div>
+            <div class="ai-desc">拍一拍物品，AI 帮你识别信息、给出合理交换参考价</div>
           </div>
         </div>
         <div class="ai-actions">
-          <el-button type="primary" @click="go('/pricing')">{{ t('home.ctaPricing') }}</el-button>
-          <el-button plain @click="go('/recognition')">{{ t('nav.identify') }}</el-button>
+          <el-button type="primary" @click="go('/pricing')">让 AI 帮你估价</el-button>
+          <el-button plain @click="go('/recognition')">物品识别</el-button>
         </div>
       </section>
 
@@ -86,8 +86,8 @@
       <!-- 3. 物品分类快捷入口 -->
       <section class="cate-section">
         <div class="section-head">
-          <span class="sec-eyebrow">{{ t('home.quickEntry') }}</span>
-          <h2 class="sec-title">{{ t('home.secCateTitle') }}</h2>
+          <span class="sec-eyebrow">快捷入口</span>
+          <h2 class="sec-title">按分类，发现邻居的好物</h2>
         </div>
         <div class="cate-grid">
           <button
@@ -107,8 +107,8 @@
       <section class="items-section">
         <div class="section-head items-head">
           <div>
-            <span class="sec-eyebrow">{{ t('home.communityFlowing') }}</span>
-            <h2 class="sec-title">{{ t('home.secItemsTitle') }}</h2>
+            <span class="sec-eyebrow">社区流动中</span>
+            <h2 class="sec-title">邻居们上传的温暖物品</h2>
           </div>
           <el-radio-group v-model="activeFilter" size="default" @change="onFilterChange">
             <el-radio-button
@@ -150,11 +150,11 @@
                   <div class="item-meta">
                     <span class="meta">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      {{ t('home.distanceLocal') }}
+                      本社区
                     </span>
                     <span class="meta carbon">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
-                      {{ t('home.carbonLabel', { value: item.carbon }) }}
+                      减碳 {{ item.carbon }}kg
                     </span>
                   </div>
                 </div>
@@ -165,14 +165,14 @@
           <!-- 绿色空状态 -->
           <div v-else-if="!itemsLoading && !itemsError" class="green-empty">
             <span class="green-empty-icon">🌱</span>
-            <p class="green-empty-text">{{ t('home.emptyItems') }}</p>
+            <p class="green-empty-text">还没有邻居上传物品哦～</p>
           </div>
 
           <!-- 距离排序等开发中提示 -->
           <el-alert
             v-if="showDistanceTip && !itemsLoading"
             class="items-tip"
-            :title="t('home.distanceTip')"
+            title="距离排序功能开发中"
             type="info"
             show-icon
             :closable="false"
@@ -182,7 +182,7 @@
           <el-alert
             v-if="itemsError && !itemsLoading"
             class="items-tip"
-            :title="t('home.itemsLoadFailed')"
+            title="物品暂时加载失败，请稍后再试"
             type="warning"
             show-icon
             :closable="false"
@@ -193,8 +193,8 @@
       <!-- 5. 邻里互换故事 -->
       <section class="story-section">
         <div class="section-head">
-          <span class="sec-eyebrow">{{ t('home.communityWarmth') }}</span>
-          <h2 class="sec-title">{{ t('home.storyTitle') }}</h2>
+          <span class="sec-eyebrow">社区温情</span>
+          <h2 class="sec-title">温暖的置换故事</h2>
         </div>
         <el-row :gutter="18">
           <el-col v-for="story in swapStories" :key="story.id" :xs="24" :sm="24" :md="8">
@@ -213,13 +213,13 @@
     <!-- 6. 底部 Footer -->
     <footer class="home-footer">
       <nav class="footer-links">
-        <RouterLink to="/about">{{ t('home.footerAbout') }}</RouterLink>
-        <RouterLink to="/convention">{{ t('home.footerConvention') }}</RouterLink>
-        <RouterLink to="/help">{{ t('home.footerHelp') }}</RouterLink>
-        <RouterLink to="/contact">{{ t('home.footerContact') }}</RouterLink>
+        <RouterLink to="/about">关于我们</RouterLink>
+        <RouterLink to="/convention">社区公约</RouterLink>
+        <RouterLink to="/help">帮助中心</RouterLink>
+        <RouterLink to="/contact">联系客服</RouterLink>
       </nav>
       <div class="footer-divider"></div>
-      <p class="footer-copy">{{ t('home.footerCopy') }}</p>
+      <p class="footer-copy">© 2026 社区旧物互换智能体平台 版权所有</p>
     </footer>
   </div>
 </template>
@@ -234,31 +234,35 @@ import {
   swapStories as rawSwapStories,
 } from '../mock/home'
 import { getItems } from '../api/item'
-import { useI18n } from '../i18n'
 
-const { t } = useI18n()
 const router = useRouter()
 const go = (path) => router.push(path)
 
-/* ---------- mock 数据按 id 映射当前语言文案 ---------- */
-const THEME_KEY = { 1: 'themeGreen', 2: 'themeReuse', 3: 'themeBooks', 4: 'themeNeighbor' }
+/* ---------- mock 数据按 id 映射文案 ---------- */
+const THEME_TEXT = { 1: '绿色社区', 2: '旧物改造', 3: '二手书籍', 4: '邻里交换' }
 function themeText(id) {
-  return t(`home.${THEME_KEY[id] || 'themeGreen'}`)
+  return THEME_TEXT[id] || '绿色社区'
 }
 
-const CATEGORY_KEY = {
-  22: 'catAppliance', 23: 'catBaby', 9: 'catBooks', 12: 'catFurniture',
-  21: 'catDigital', 13: 'catClothing', 14: 'catSports', 24: 'catOther',
+const CATEGORY_TEXT = {
+  22: '家电', 23: '母婴', 9: '图书', 12: '家具',
+  21: '数码', 13: '服饰', 14: '运动', 24: '其他',
 }
 const categories = computed(() =>
-  rawCategories.map((c) => ({ ...c, name: t(`home.${CATEGORY_KEY[c.id] || 'catOther'}`) })),
+  rawCategories.map((c) => ({ ...c, name: CATEGORY_TEXT[c.id] || '其他' })),
 )
 
+const STORY_NAME = { 1: '林阿姨', 2: '阿杰', 3: '小满妈妈' }
+const STORY_TEXT = {
+  1: '把孙子小时候的绘本送给了楼下新搬来的年轻妈妈，她回赠我一盆绿萝。书有人读，花有人养，这就是邻里最好的样子。',
+  2: '用闲置的咖啡机换到了同小区的公路车头盔，线上约好周末广场交接，比二手平台省心多了，还多认识了一个骑友。',
+  3: '宝宝长得快，婴儿车、摇椅几乎没用几次。在社区里一件件流转出去，每次交接都觉得这些东西在替我们继续陪伴新的家庭。',
+}
 const swapStories = computed(() =>
   rawSwapStories.map((s) => ({
     ...s,
-    name: t(`home.story${s.id}Name`),
-    text: t(`home.story${s.id}Text`),
+    name: STORY_NAME[s.id] || '',
+    text: STORY_TEXT[s.id] || '',
   })),
 )
 
@@ -281,9 +285,9 @@ const FALLBACK_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='420'%3E%3Crect width='100%25' height='100%25' fill='%23E8F5E9'/%3E%3Cg fill='none' stroke='%234CAF50' stroke-width='6' stroke-linecap='round'%3E%3Cpath d='M300 250c-20-52-62-76-102-72-40 4-64 34-62 70 2 34 28 56 64 56h98c34 0 60-22 62-54 2-34-20-62-58-66-38-4-78 18-96 66'/%3E%3C/g%3E%3C/svg%3E"
 
 const itemFilters = computed(() => [
-  { key: 'latest', label: t('home.filterLatest') },
-  { key: 'nearest', label: t('home.filterNearest') },
-  { key: 'carbon', label: t('home.filterCarbon') },
+  { key: 'latest', label: '最新发布' },
+  { key: 'nearest', label: '离我最近' },
+  { key: 'carbon', label: '碳减排最多' },
 ])
 const activeFilter = ref('latest')
 
@@ -299,14 +303,13 @@ const itemsLoading = ref(false)
 const itemsError = ref(false)
 const showDistanceTip = ref(false)
 
-const MODE_KEY = { 1: 'modeFree', 2: 'modeSwap', 3: 'modePoints' }
+const MODE_TEXT = { 1: '免费送出', 2: '物物交换', 3: '积分兑换' }
 function modeText(code) {
-  return t(`home.${MODE_KEY[code] || 'modeSwap'}`)
+  return MODE_TEXT[code] || '物物交换'
 }
+const CONDITION_TEXT = { 1: '成色一般', 2: '七成新', 3: '八成新', 4: '九成新', 5: '几乎全新' }
 function conditionText(level) {
-  const key = `home.condition${level}`
-  const text = t(key)
-  return text === key ? t('home.conditionGood') : text
+  return CONDITION_TEXT[level] || '状态良好'
 }
 
 // images 可能是 JSON 字符串，也可能已被驱动解析成数组

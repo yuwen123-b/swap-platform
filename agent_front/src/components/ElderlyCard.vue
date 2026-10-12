@@ -14,27 +14,25 @@
       v-if="card.status === 'ok' && card.item_id"
       class="view-btn"
       type="button"
-      :aria-label="t('elderlyMode.viewItem')"
+      aria-label="看看这个物品"
       @click="$emit('view-item', card.item_id)"
     >
-      {{ t('elderlyMode.viewItem') }}
+      看看这个物品
     </button>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { useI18n } from '../i18n'
 
 const props = defineProps({
   card: { type: Object, required: true }, // { status, label, item_id?, item_title? }
 })
 defineEmits(['view-item'])
-const { t } = useI18n()
 
 const ariaText = computed(() =>
   props.card.item_title
-    ? t('elderlyMode.ariaWithItem', { label: props.card.label, title: props.card.item_title })
+    ? `${props.card.label}：${props.card.item_title}`
     : props.card.label,
 )
 </script>

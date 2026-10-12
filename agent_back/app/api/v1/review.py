@@ -1,16 +1,15 @@
 import json
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Query
 from app.core.response import success
 from app.core.security import get_current_user_id
 from app.db.pool import connection
 from app.schemas.review import ReviewCreate
-from app.services import translation_service
 
 router = APIRouter()
 
 
 @router.get("")
-def list_reviews(page: int = Query(1, ge=1), size: int = Query(10, ge=1, le=100), to_user_id: int | None = None, order_id: int | None = None, accept_language: str = Header(default="zh"), _: int = Depends(get_current_user_id)):
+def list_reviews(page: int = Query(1, ge=1), size: int = Query(10, ge=1, le=100), to_user_id: int | None = None, order_id: int | None = None, _: int = Depends(get_current_user_id)):
     conditions = ["1=1"]
     params: list = []
     if to_user_id:
@@ -26,11 +25,6 @@ def list_reviews(page: int = Query(1, ge=1), size: int = Query(10, ge=1, le=100)
             total = cursor.fetchone()["total"]
             cursor.execute(f"SELECT r.* FROM review r WHERE {where} ORDER BY r.id DESC LIMIT %s OFFSET %s", params + [size, (page - 1) * size])
             rows = cursor.fetchall()
-    # 英文模式：并发翻译评价内容（内部带缓存）
-    if rows and translation_service.normalize_request_lang(accept_language) == "en":
-        contents = translation_service.translate_many([r["content"] or "" for r in rows], "en")
-        for r, c in zip(rows, contents):
-            r["content"] = c
     return success({"items": rows, "total": total, "page": page, "size": size})
 
 
