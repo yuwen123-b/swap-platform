@@ -44,10 +44,18 @@ class Settings(BaseSettings):
     # 图像编辑（视角外推）/ 文生图 / 语音识别模型
     llm_image_edit_model: str = "wanx2.1-imageedit"
     llm_image_gen_model: str = "wanx2.1-t2i-turbo"
-    llm_asr_model: str = "paraformer-v2"
+    llm_asr_model: str = "paraformer-realtime-v2"
     # 语音合成（qwen3-tts-flash 同步 HTTP 接口；合成失败或未配置密钥时自动降级为前端 Web Speech API）
     llm_tts_model: str = "qwen3-tts-flash"
     llm_tts_voice: str = "Cherry"
+    # 文本向量模型（Chroma 向量库预留）
+    llm_embedding_model: str = "text-embedding-v4"
+    # DashScope 原生 REST 接口 URL（异步任务类：图像编辑/文生图/语音识别/任务轮询）
+    image_edit_api_url: str = "https://dashscope.aliyuncs.com/api/v1/services/aigc/image2image/image-synthesis"
+    image_gen_api_url: str = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
+    tts_api_url: str = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+    asr_api_url: str = "https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription"
+    task_api_url: str = "https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
     # 后端公网访问地址（图像编辑、语音识别需向 DashScope 提供公网可达的文件 URL，留空则相关能力自动降级）
     public_base_url: str = ""
     # 企业微信机器人 Webhook（留空时推送降级为日志打印，不阻断流程）

@@ -19,8 +19,6 @@ from openai import OpenAI
 from app.core.config import settings
 from app.services import dashscope
 
-# DashScope 原生 REST 基地址（异步任务类接口不在 OpenAI 兼容路径下）
-NATIVE_BASE = "https://dashscope.aliyuncs.com/api/v1"
 # 任务轮询间隔与超时（秒）
 _POLL_INTERVAL = 2.0
 _TASK_TIMEOUT = 120
@@ -121,11 +119,11 @@ def describe_image(image_ref: str, prompt: str, timeout: int = 60) -> str:
 # DashScope 原生异步任务（图像编辑 / 文生图 / 语音识别）
 # ---------------------------------------------------------------------------
 
-def _submit_task(path: str, payload: dict) -> str:
-    """提交异步任务，返回 task_id。"""
+def _submit_task(url: str, payload: dict) -> str:
+    """提交异步任务到指定 URL，返回 task_id。"""
     _require_key()
     resp = requests.post(
-        f"{NATIVE_BASE}{path}",
+        url,
         headers={**_headers(), "X-DashScope-Async": "enable"},
         json=payload,
         timeout=30,
@@ -142,7 +140,7 @@ def _wait_task(task_id: str, timeout: int = _TASK_TIMEOUT) -> dict:
     """轮询任务直至完成，返回 output 对象。"""
     deadline = time.time() + timeout
     while time.time() < deadline:
-        resp = requests.get(f"{NATIVE_BASE}/tasks/{task_id}", headers=_headers(), timeout=15)
+        resp = requests.get(settings.task_api_url.format(task_id=task_id), headers=_headers(), timeout=15)
         if resp.status_code >= 400:
             raise RuntimeError(f"任务查询失败 HTTP {resp.status_code}: {resp.text[:300]}")
         output = resp.json().get("output", {})
@@ -172,7 +170,7 @@ def image_edit(image_url: str, prompt: str) -> str:
         "input": {"function": "description_edit", "prompt": prompt, "base_image_url": image_url},
         "parameters": {"n": 1},
     }
-    output = _wait_task(_submit_task("/services/aigc/image2image/image-synthesis", payload))
+    output = _wait_task(_submit_task(settings.image_edit_api_url, payload))
     return _extract_result_url(output)
 
 
@@ -183,7 +181,7 @@ def text_to_image(prompt: str, size: str = "1024*1024") -> str:
         "input": {"prompt": prompt},
         "parameters": {"size": size, "n": 1},
     }
-    output = _wait_task(_submit_task("/services/aigc/text2image/image-synthesis", payload))
+    output = _wait_task(_submit_task(settings.image_gen_api_url, payload))
     return _extract_result_url(output)
 
 
@@ -201,7 +199,7 @@ def synthesize_speech(text: str) -> bytes:
         "input": {"text": text, "voice": settings.llm_tts_voice},
     }
     try:
-        resp = requests.post(f"{NATIVE_BASE}/services/aigc/multimodal-generation/generation",
+        resp = requests.post(settings.tts_api_url,
                              headers=_headers(), json=payload, timeout=60)
     except requests.RequestException as exc:
         raise RuntimeError(f"语音合成请求失败：{exc}") from exc
@@ -228,7 +226,7 @@ def transcribe_audio(file_url: str) -> str:
         "model": settings.llm_asr_model,
         "input": {"file_urls": [file_url]},
     }
-    output = _wait_task(_submit_task("/services/audio/asr/transcription", payload))
+    output = _wait_task(_submit_task(settings.asr_api_url, payload))
     results = output.get("results")
     if not isinstance(results, list) or not results:
         raise RuntimeError("语音识别任务输出缺少 results")
