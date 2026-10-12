@@ -9,11 +9,11 @@ from app.core.config import settings
 
 
 def has_key() -> bool:
-    return bool(settings.llm_api_key.strip())
+    return bool(settings.dashscope_api_key.strip())
 
 
 def _client() -> OpenAI:
-    return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_api_url)
+    return OpenAI(api_key=settings.dashscope_api_key, base_url=settings.llm_api_url)
 
 
 def chat_stream(messages: list[dict], model: str | None = None, timeout: int = 120) -> Iterator[str]:

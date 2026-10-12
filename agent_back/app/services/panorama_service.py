@@ -101,19 +101,19 @@ def generate(item_id: int, source_image: Path) -> dict:
     fallback = False
     missing = [n for n in VIEW_NAMES if n != "front"]
 
+    source_url = ""
     if settings.public_base_url:
         source_url = f"{settings.public_base_url}{_view_url(item_id, 'front')}"
-        try:
-            for name in missing:
-                result_url = llm_client.image_edit(source_url, _VIEW_PROMPT[name])
-                llm_client.download_file(result_url, views_dir / f"{name}.jpg")
-                views[name] = _view_url(item_id, name)
-            missing = []
-        except RuntimeError as exc:
-            logger.warning("图像外推失败，转降级方案：%s", exc)
-            fallback = True
-    else:
-        logger.info("未配置 PUBLIC_BASE_URL，360° 生成直接走降级方案")
+    try:
+        for name in missing:
+            image_bytes = llm_client.image_edit(
+                image_path=front_path, image_url=source_url, prompt=_VIEW_PROMPT[name],
+            )
+            (views_dir / f"{name}.jpg").write_bytes(image_bytes)
+            views[name] = _view_url(item_id, name)
+        missing = []
+    except RuntimeError as exc:
+        logger.warning("图像外推失败，转降级方案：%s", exc)
         fallback = True
 
     if missing:

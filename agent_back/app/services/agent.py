@@ -1,4 +1,4 @@
-"""智能体助手：配置 LLM_API_KEY 后走真实大模型，否则降级本地演示。"""
+"""智能体助手：配置 DASHSCOPE_API_KEY 后走真实大模型，否则降级本地演示。"""
 import time
 from collections.abc import Iterator
 
@@ -22,7 +22,7 @@ EN_MOCK_REPLY = (
     "Hi, I'm Xiao Lyu, the assistant of the community swap platform. I can help with: "
     "how to list a pre-loved item, finding items to swap, arranging handover safely, "
     "green points and the leaderboard, and eco tips. "
-    "(Demo mode: configure LLM_API_KEY in .env to enable the real LLM.)"
+    "(Demo mode: configure DASHSCOPE_API_KEY in .env to enable the real LLM.)"
 )
 
 CATEGORIES = ["数码电子", "家居家电", "图书文具", "服饰鞋包", "母婴用品", "运动户外", "美妆个护", "其他闲置"]
@@ -63,7 +63,7 @@ def mock_reply(question: str) -> str:
         )
     return (
         "你好，我是社区旧物互换助手小绿～可以帮你解答：如何发布闲置、寻找心仪物品、约定交接、"
-        "积分与绿色达人榜单、环保减碳小知识等。（当前为演示模式：后端未配置 LLM_API_KEY，"
+        "积分与绿色达人榜单、环保减碳小知识等。（当前为演示模式：后端未配置 DASHSCOPE_API_KEY，"
         "配置后即可接入真实大模型回答任意问题）"
     )
 

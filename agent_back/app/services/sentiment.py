@@ -1,4 +1,4 @@
-"""情感分析：词典规则打底；配置 LLM_API_KEY 后优先大模型判定，失败自动回退词典。
+"""情感分析：词典规则打底；配置 DASHSCOPE_API_KEY 后优先大模型判定，失败自动回退词典。
 
 label 取值：positive（良好）/ neutral（中性）/ negative（差）。
 """

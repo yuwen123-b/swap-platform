@@ -1,0 +1,13 @@
+feat: 语音识别/语音合成/图像编辑切换魔搭社区(ModelScope)免费API
+
+新增 MODELSCOPE_API_KEY 和 ASR/TTS/IMAGE_PROVIDER 供应商切换，
+三个能力默认走魔搭 OpenAI 兼容接口（Fun-ASR-Nano-2512、
+CosyVoice2-0.5B、Qwen-Image-Edit-2511），魔搭失败自动降级百炼。
+
+llm_client.py: transcribe_audio/synthesize_speech/image_edit 重构为
+provider 分支 + 降级链路；image_edit 返回 bytes（不再返回 URL）
+voice_service.py: transcribe 传文件路径给魔搭，public_base_url 可选
+panorama_service.py: generate 传 front_path，直接 write_bytes
+
+测试: 更新 test_voice_service 和 test_panorama_service mock 签名
+验证: pytest 50/50 passed

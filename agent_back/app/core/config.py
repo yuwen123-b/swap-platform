@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     sms_template_code: str = ""
     # 用户上传图片存储目录（相对 agent_back 运行目录）
     upload_dir: str = "uploads"
-    # 大模型（阿里云百炼 DashScope OpenAI 兼容接口；LLM_API_KEY 为空时降级演示模式）
-    llm_api_key: str = ""
+    # 大模型（阿里云百炼 DashScope OpenAI 兼容接口；DASHSCOPE_API_KEY 为空时降级演示模式）
+    dashscope_api_key: str = ""
     llm_api_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     llm_api_model: str = "qwen-plus"
     llm_vl_model: str = "qwen-vl-plus"
@@ -58,6 +58,17 @@ class Settings(BaseSettings):
     task_api_url: str = "https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
     # 后端公网访问地址（图像编辑、语音识别需向 DashScope 提供公网可达的文件 URL，留空则相关能力自动降级）
     public_base_url: str = ""
+    # 魔搭社区（ModelScope）免费 API：每日 2000 次免费调用
+    modelscope_api_key: str = ""
+    modelscope_api_url: str = "https://api-inference.modelscope.cn/v1"
+    # 能力供应商切换：modelscope 或 dashscope（默认 modelscope，调用失败自动降级 dashscope）
+    asr_provider: str = "modelscope"
+    tts_provider: str = "modelscope"
+    image_provider: str = "modelscope"
+    # 魔搭模型 ID（组织/模型名 格式）
+    asr_model: str = "FunAudioLLM/Fun-ASR-Nano-2512"
+    tts_model: str = "iic/CosyVoice2-0.5B"
+    image_model: str = "Qwen/Qwen-Image-Edit-2511"
     # 企业微信机器人 Webhook（留空时推送降级为日志打印，不阻断流程）
     wework_webhook_url: str = ""
     db_connect_timeout: int = 5

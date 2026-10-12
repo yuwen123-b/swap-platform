@@ -42,7 +42,16 @@ def test_get_views_ready_with_data(monkeypatch):
 def _noise_jpeg(path: Path, size: int = 1400) -> None:
     """生成随机噪声 JPEG（随机像素几乎不可压缩，稳定产出大文件）。"""
     img = Image.frombytes("RGB", (size, size), os.urandom(size * size * 3))
-    img.save(path, "JPEG", quality=95)
+    img.save(path, "JPEG")
+
+
+def _noise_jpeg_bytes(size: int = 200) -> bytes:
+    """生成随机噪声 JPEG 二进制（用于 mock image_edit 返回值）。"""
+    import io
+    img = Image.frombytes("RGB", (size, size), os.urandom(size * size * 3))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG")
+    return buf.getvalue()
 
 
 def test_generate_compresses_oversize_views(tmp_path, monkeypatch):
@@ -55,14 +64,8 @@ def test_generate_compresses_oversize_views(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.panorama_service.llm_client.image_edit",
-        lambda url, prompt: "https://example.com/img.jpg",
+        lambda **kwargs: _noise_jpeg_bytes(size=1000),
     )
-
-    def fake_download(url, dest):
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        _noise_jpeg(dest)
-
-    monkeypatch.setattr("app.services.panorama_service.llm_client.download_file", fake_download)
     _patch_db(monkeypatch, [])
     source = tmp_path / "front.jpg"
     _noise_jpeg(source, size=1000)

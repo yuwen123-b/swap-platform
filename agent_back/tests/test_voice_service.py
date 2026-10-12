@@ -33,7 +33,7 @@ def test_transcribe_calls_llm_client(monkeypatch, tmp_path):
     )
     called = {}
 
-    def fake_transcribe(file_url):
+    def fake_transcribe(file_path, file_url=""):
         called["url"] = file_url
         return "我想换电饭煲"
 
@@ -46,7 +46,7 @@ def test_transcribe_calls_llm_client(monkeypatch, tmp_path):
 
 def test_synthesize_disabled_without_key(monkeypatch):
     """未配置大模型密钥时 TTS 降级：返回空 URL，不发起任何请求。"""
-    monkeypatch.setattr("app.services.voice_service.settings.llm_api_key", "")
+    monkeypatch.setattr("app.services.voice_service.settings.dashscope_api_key", "")
     called = {"n": 0}
 
     def boom(*a, **k):
@@ -60,7 +60,7 @@ def test_synthesize_disabled_without_key(monkeypatch):
 
 def test_synthesize_writes_file_and_downgrades(monkeypatch, tmp_path):
     """合成成功落盘并返回静态 URL；合成失败时静默降级为空 URL。"""
-    monkeypatch.setattr("app.services.voice_service.settings.llm_api_key", "sk-test")
+    monkeypatch.setattr("app.services.voice_service.settings.dashscope_api_key", "sk-test")
     monkeypatch.setattr("app.services.voice_service.settings.upload_dir", str(tmp_path))
     monkeypatch.setattr("app.services.voice_service.settings.api_prefix", "/api/v1")
     monkeypatch.setattr(

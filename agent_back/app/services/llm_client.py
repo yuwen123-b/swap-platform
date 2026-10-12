@@ -30,16 +30,30 @@ def available() -> bool:
 
 
 def _headers() -> dict:
-    return {"Authorization": f"Bearer {settings.llm_api_key}", "Content-Type": "application/json"}
+    return {"Authorization": f"Bearer {settings.dashscope_api_key}", "Content-Type": "application/json"}
 
 
 def _require_key() -> None:
     if not available():
-        raise RuntimeError("大模型服务未配置密钥（LLM_API_KEY）")
+        raise RuntimeError("大模型服务未配置密钥（DASHSCOPE_API_KEY）")
 
 
 def _chat_client() -> OpenAI:
-    return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_api_url)
+    return OpenAI(api_key=settings.dashscope_api_key, base_url=settings.llm_api_url)
+
+
+def _modelscope_client() -> OpenAI:
+    """魔搭社区 OpenAI 兼容客户端（ASR/TTS/图像编辑 共用）。"""
+    return OpenAI(api_key=settings.modelscope_api_key, base_url=settings.modelscope_api_url)
+
+
+def _has_modelscope() -> bool:
+    return bool(settings.modelscope_api_key.strip())
+
+
+def _require_modelscope_key() -> None:
+    if not _has_modelscope():
+        raise RuntimeError("魔搭服务未配置密钥（MODELSCOPE_API_KEY）")
 
 
 def chat_text(messages: list[dict], model: str | None = None, timeout: int = 60) -> str:
@@ -163,15 +177,67 @@ def _extract_result_url(output: dict) -> str:
     raise RuntimeError("任务输出中未找到结果 URL")
 
 
-def image_edit(image_url: str, prompt: str) -> str:
-    """图像编辑（wanx2.1-imageedit 外推/局部编辑），image_url 需公网可达，返回结果图 URL。"""
+def image_edit(image_path: Path | None = None, image_url: str = "", prompt: str = "") -> bytes:
+    """图像编辑（多视角外推/局部编辑），返回结果图二进制。
+
+    供应商切换：
+    - IMAGE_PROVIDER=modelscope（默认）：魔搭 Qwen-Image-Edit，OpenAI 兼容接口，传本地文件；
+    - IMAGE_PROVIDER=dashscope：百炼 wanx2.1-imageedit，异步任务 REST，传公网 URL；
+    - 魔搭失败时自动降级百炼（需配置 DASHSCOPE_API_KEY 和 PUBLIC_BASE_URL）。
+    """
+    # 优先魔搭
+    if settings.image_provider == "modelscope" and _has_modelscope() and image_path:
+        try:
+            return _image_edit_modelscope(image_path, prompt)
+        except RuntimeError as exc:
+            import logging
+            logging.getLogger(__name__).warning("魔搭图像编辑失败，降级百炼：%s", exc)
+    # 降级百炼
+    return _image_edit_dashscope(image_url, prompt)
+
+
+def _image_edit_modelscope(image_path: Path, prompt: str) -> bytes:
+    """魔搭图像编辑：OpenAI 兼容 images.edit 接口。"""
+    _require_modelscope_key()
+    try:
+        with open(image_path, "rb") as f:
+            resp = _modelscope_client().images.edit(
+                model=settings.image_model,
+                image=f,
+                prompt=prompt,
+            )
+    except openai.APIError as exc:
+        raise RuntimeError(f"魔搭图像编辑失败：{exc}") from exc
+    if not resp.data:
+        raise RuntimeError("魔搭图像编辑返回空结果")
+    item = resp.data[0]
+    # 优先 base64，其次下载 URL
+    if getattr(item, "b64_json", None):
+        return base64.b64decode(item.b64_json)
+    url = getattr(item, "url", None)
+    if not url:
+        raise RuntimeError("魔搭图像编辑结果缺少 url 和 b64_json")
+    r = requests.get(url, timeout=30)
+    if r.status_code >= 400:
+        raise RuntimeError(f"魔搭图像编辑结果下载失败 HTTP {r.status_code}")
+    return r.content
+
+
+def _image_edit_dashscope(image_url: str, prompt: str) -> bytes:
+    """百炼图像编辑（异步任务 REST），image_url 需公网可达，返回结果图二进制。"""
+    _require_key()
+    if not image_url:
+        raise RuntimeError("百炼图像编辑需要公网可达的图片 URL（PUBLIC_BASE_URL 未配置）")
     payload = {
         "model": settings.llm_image_edit_model,
         "input": {"function": "description_edit", "prompt": prompt, "base_image_url": image_url},
         "parameters": {"n": 1},
     }
-    output = _wait_task(_submit_task(settings.image_edit_api_url, payload))
-    return _extract_result_url(output)
+    result_url = _extract_result_url(_wait_task(_submit_task(settings.image_edit_api_url, payload)))
+    r = requests.get(result_url, timeout=30)
+    if r.status_code >= 400:
+        raise RuntimeError(f"百炼图像编辑结果下载失败 HTTP {r.status_code}")
+    return r.content
 
 
 def text_to_image(prompt: str, size: str = "1024*1024") -> str:
@@ -186,14 +252,45 @@ def text_to_image(prompt: str, size: str = "1024*1024") -> str:
 
 
 def synthesize_speech(text: str) -> bytes:
-    """语音合成（qwen3-tts-flash 同步 HTTP 接口），返回音频二进制。
+    """语音合成，返回音频二进制。
 
-    请求体仅含 model 与 input{text, voice}；接口以 JSON 返回临时音频 URL（24 小时
-    有效），需二次下载。失败统一抛 RuntimeError。
+    供应商切换：
+    - TTS_PROVIDER=modelscope（默认）：魔搭 CosyVoice2-0.5B，OpenAI 兼容 audio.speech 接口；
+    - TTS_PROVIDER=dashscope：百炼 qwen3-tts-flash，同步 HTTP REST；
+    - 魔搭失败时自动降级百炼。
     """
-    _require_key()
     if not (text or "").strip():
         raise RuntimeError("语音合成文本为空")
+    # 优先魔搭
+    if settings.tts_provider == "modelscope" and _has_modelscope():
+        try:
+            return _synthesize_modelscope(text)
+        except RuntimeError as exc:
+            import logging
+            logging.getLogger(__name__).warning("魔搭语音合成失败，降级百炼：%s", exc)
+    # 降级百炼
+    return _synthesize_dashscope(text)
+
+
+def _synthesize_modelscope(text: str) -> bytes:
+    """魔搭语音合成：OpenAI 兼容 audio.speech 接口。"""
+    _require_modelscope_key()
+    try:
+        resp = _modelscope_client().audio.speech.create(
+            model=settings.tts_model,
+            input=text,
+            voice="default",
+        )
+    except openai.APIError as exc:
+        raise RuntimeError(f"魔搭语音合成失败：{exc}") from exc
+    if not resp.content:
+        raise RuntimeError("魔搭语音合成返回空音频")
+    return resp.content
+
+
+def _synthesize_dashscope(text: str) -> bytes:
+    """百炼语音合成（qwen3-tts-flash 同步 HTTP），返回音频二进制。"""
+    _require_key()
     payload = {
         "model": settings.llm_tts_model,
         "input": {"text": text, "voice": settings.llm_tts_voice},
@@ -208,11 +305,7 @@ def synthesize_speech(text: str) -> bytes:
     audio_url = (resp.json().get("output", {}).get("audio", {}) or {}).get("url")
     if not audio_url:
         raise RuntimeError(f"语音合成响应缺少音频 URL：{resp.text[:300]}")
-    # 结果音频存放在阿里云 OSS，需下载到本地
-    try:
-        audio_resp = requests.get(audio_url, timeout=30)
-    except requests.RequestException as exc:
-        raise RuntimeError(f"合成音频下载失败：{exc}") from exc
+    audio_resp = requests.get(audio_url, timeout=30)
     if audio_resp.status_code >= 400:
         raise RuntimeError(f"合成音频下载失败 HTTP {audio_resp.status_code}")
     if not audio_resp.content:
@@ -220,8 +313,47 @@ def synthesize_speech(text: str) -> bytes:
     return audio_resp.content
 
 
-def transcribe_audio(file_url: str) -> str:
-    """语音识别（paraformer 文件转写），file_url 需公网可达，返回识别文本。"""
+def transcribe_audio(file_path: Path, file_url: str = "") -> str:
+    """语音识别，返回识别文本。
+
+    供应商切换：
+    - ASR_PROVIDER=modelscope（默认）：魔搭 Fun-ASR-Nano，OpenAI 兼容 audio.transcriptions 接口，传本地文件；
+    - ASR_PROVIDER=dashscope：百炼 paraformer，异步任务 REST，传公网 URL；
+    - 魔搭失败时自动降级百炼（需配置 DASHSCOPE_API_KEY 和 PUBLIC_BASE_URL）。
+    """
+    # 优先魔搭
+    if settings.asr_provider == "modelscope" and _has_modelscope():
+        try:
+            return _transcribe_modelscope(file_path)
+        except RuntimeError as exc:
+            import logging
+            logging.getLogger(__name__).warning("魔搭语音识别失败，降级百炼：%s", exc)
+    # 降级百炼
+    return _transcribe_dashscope(file_url)
+
+
+def _transcribe_modelscope(file_path: Path) -> str:
+    """魔搭语音识别：OpenAI 兼容 audio.transcriptions 接口。"""
+    _require_modelscope_key()
+    try:
+        with open(file_path, "rb") as f:
+            resp = _modelscope_client().audio.transcriptions.create(
+                model=settings.asr_model,
+                file=f,
+            )
+    except openai.APIError as exc:
+        raise RuntimeError(f"魔搭语音识别失败：{exc}") from exc
+    text = (resp.text or "").strip()
+    if not text:
+        raise RuntimeError("魔搭语音识别结果为空")
+    return text
+
+
+def _transcribe_dashscope(file_url: str) -> str:
+    """百炼语音识别（paraformer 异步任务 REST），file_url 需公网可达。"""
+    _require_key()
+    if not file_url:
+        raise RuntimeError("百炼语音识别需要公网可达的音频 URL（PUBLIC_BASE_URL 未配置）")
     payload = {
         "model": settings.llm_asr_model,
         "input": {"file_urls": [file_url]},
@@ -233,7 +365,6 @@ def transcribe_audio(file_url: str) -> str:
     transcription_url = results[0].get("transcription_url")
     if not transcription_url:
         raise RuntimeError("语音识别任务输出缺少 transcription_url")
-    # 转写结果为一份 JSON 文件，需二次下载解析
     resp = requests.get(transcription_url, timeout=15)
     if resp.status_code >= 400:
         raise RuntimeError(f"转写结果下载失败 HTTP {resp.status_code}")

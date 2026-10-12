@@ -30,7 +30,7 @@ def synthesize(text: str, lang: str = "zh_CN", rate: float = 1.0) -> str:
     - 返回相对路径（如 /api/v1/static/tts/xxx.mp3），与物品图片 URL 同一挂载规则。
     """
     text = (text or "").strip()
-    if not text or not settings.llm_api_key:
+    if not text or not (settings.dashscope_api_key or settings.modelscope_api_key):
         return ""
     filename = hashlib.md5(f"{lang}|{rate}|{text}".encode("utf-8")).hexdigest() + ".mp3"
     audio_path = Path(settings.upload_dir) / TTS_DIR_NAME / filename
@@ -50,10 +50,10 @@ VOICE_BY_LANG = {"zh_CN": "zh-CN", "en_US": "en-US"}
 
 def transcribe(audio_path: Path) -> str:
     """语音转文字。audio_path 需位于 uploads/voice 目录下，以便拼接公网 URL。"""
-    if not settings.public_base_url:
-        raise RuntimeError("语音识别需要配置公网访问地址（PUBLIC_BASE_URL）")
-    file_url = f"{settings.public_base_url}{settings.api_prefix}/static/voice/{audio_path.name}"
-    return llm_client.transcribe_audio(file_url)
+    file_url = ""
+    if settings.public_base_url:
+        file_url = f"{settings.public_base_url}{settings.api_prefix}/static/voice/{audio_path.name}"
+    return llm_client.transcribe_audio(audio_path, file_url)
 
 
 def _split_sentences(text: str, max_len: int) -> list[str]:

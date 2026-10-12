@@ -54,8 +54,8 @@ EN_SYSTEM_PROMPT = (
 
 
 def is_configured() -> bool:
-    """LLM_API_KEY 是否已配置。"""
-    return bool(settings.llm_api_key.strip())
+    """DASHSCOPE_API_KEY 是否已配置。"""
+    return bool(settings.dashscope_api_key.strip())
 
 
 def preprocess_image(data: bytes) -> tuple[bytes, str]:
@@ -117,7 +117,7 @@ def recognize_image(data: bytes, mime: str, lang: str = "zh") -> dict:
         if lang == "en"
         else "请识别图中的闲置物品，按 system 约定的 JSON 格式返回。"
     )
-    client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_api_url)
+    client = OpenAI(api_key=settings.dashscope_api_key, base_url=settings.llm_api_url)
     completion = client.chat.completions.create(
         model=settings.llm_vl_model,
         messages=[
@@ -147,9 +147,9 @@ def recognize_with_fallback(data: bytes, mime: str, lang: str = "zh") -> dict:
     if not is_configured():
         base = mock_recognition_en() if lang == "en" else mock_recognition()
         notice = (
-            "LLM_API_KEY is not configured; running in demo mode. Configure it in .env for real recognition."
-            if lang == "en"
-            else "未配置 LLM_API_KEY，当前为演示模式；在 .env 配置后即可真实识别。"
+            "DASHSCOPE_API_KEY is not configured; running in demo mode. Configure it in .env for real recognition."
+            if settings.debug
+            else "未配置 DASHSCOPE_API_KEY，当前为演示模式；在 .env 配置后即可真实识别。"
         )
         return {**base, "engine": "mock", "notice": notice}
     try:
