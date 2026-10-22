@@ -34,3 +34,6 @@ uploads/
 # ===== 系统文件 =====
 Thumbs.db
 .DS_Store
+
+# ===== WorkBuddy 本地工具数据（探针/截图/记忆，不入仓库） =====
+.workbuddy/

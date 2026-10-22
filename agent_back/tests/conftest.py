@@ -64,3 +64,20 @@ def make_connection(cursor: FakeCursor):
         yield FakeConn(cursor)
 
     return _conn
+
+
+def stub_image_signer(monkeypatch):
+    """把图片签名换成可读的桩 `/sign?<相对路径>`。
+
+    「DB 只存相对路径 + 读取时现场签名」上线后，所有读取端返回的封面都是
+    现场签名的 URL（带随时间变化的 exp/sig）。单测里用桩代替真实 HMAC：
+    断言保持可读、不随密钥与时钟漂移，同时仍能校验「旧签名被剥掉、
+    前缀被归一成相对路径」这一关键行为。
+    """
+    from app.services import image_utils
+
+    monkeypatch.setattr(
+        image_utils,
+        "to_signed_url",
+        lambda v: f"/sign?{image_utils.normalize_image_ref(v)}",
+    )

@@ -8,6 +8,7 @@
 """
 import base64
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any
@@ -296,8 +297,10 @@ def _synthesize_dashscope(text: str) -> bytes:
         "input": {"text": text, "voice": settings.llm_tts_voice},
     }
     try:
+        # 超时 12s：实测正常 1.1~1.6s；曾遇到一次 >60s 无响应，会把整轮助老交互卡死。
+        # 失败前端会降级 Web Speech API 播报，所以宁可早放弃（12s 已是正常的 8 倍余量）。
         resp = requests.post(settings.tts_api_url,
-                             headers=_headers(), json=payload, timeout=60)
+                             headers=_headers(), json=payload, timeout=12)
     except requests.RequestException as exc:
         raise RuntimeError(f"语音合成请求失败：{exc}") from exc
     if resp.status_code >= 400:
@@ -316,20 +319,114 @@ def _synthesize_dashscope(text: str) -> bytes:
 def transcribe_audio(file_path: Path, file_url: str = "") -> str:
     """语音识别，返回识别文本。
 
-    供应商切换：
-    - ASR_PROVIDER=modelscope（默认）：魔搭 Fun-ASR-Nano，OpenAI 兼容 audio.transcriptions 接口，传本地文件；
-    - ASR_PROVIDER=dashscope：百炼 paraformer，异步任务 REST，传公网 URL；
-    - 魔搭失败时自动降级百炼（需配置 DASHSCOPE_API_KEY 和 PUBLIC_BASE_URL）。
+    三级链路（前一环失败才走下一环，最终全部失败才抛 RuntimeError）：
+    1. 魔搭 Fun-ASR（仅当 ASR_PROVIDER=modelscope 且配了 Key）；
+       ⚠️ 实测魔搭推理网关目前没有任何音频端点（/v1/audio/* 全 404），保留仅为将来可用；
+    2. **qwen3-asr-flash（默认主链路）**：多模态接口 + base64 直传，
+       不依赖 PUBLIC_BASE_URL / ngrok，是当前唯一实测可用的路径；
+    3. paraformer 录音文件转写（异步任务，需要公网可达 URL；ngrok 掉线即不可用）。
     """
-    # 优先魔搭
     if settings.asr_provider == "modelscope" and _has_modelscope():
         try:
             return _transcribe_modelscope(file_path)
         except RuntimeError as exc:
-            import logging
             logging.getLogger(__name__).warning("魔搭语音识别失败，降级百炼：%s", exc)
-    # 降级百炼
-    return _transcribe_dashscope(file_url)
+
+    errors: list[str] = []
+    # 主链路：qwen3-asr-flash（本地文件直传，无需公网地址）
+    try:
+        return _transcribe_qwen_asr(file_path)
+    except RuntimeError as exc:
+        errors.append(f"qwen3-asr-flash：{exc}")
+        logging.getLogger(__name__).warning("qwen3-asr-flash 识别失败，降级 paraformer：%s", exc)
+    # 兜底：paraformer 异步任务（需公网 URL）
+    if not file_url:
+        errors.append("paraformer 兜底不可用：未配置 PUBLIC_BASE_URL（无法提供公网音频地址）")
+    else:
+        try:
+            return _transcribe_dashscope(file_url)
+        except RuntimeError as exc:
+            errors.append(f"paraformer：{exc}")
+    # 把三层原因一并抛出，避免"任务失败"这种无法定位的信息
+    raise RuntimeError("语音识别失败 → " + "；".join(errors))
+
+
+# 音频容器魔数 → DashScope 认识的格式名。
+# 必须按**真实字节**判断：Chrome 新版 MediaRecorder 产出的是 MP4/AAC，
+# 但前端文件名固定叫 recording.webm（历史遗留），按扩展名判会喂错格式。
+_AUDIO_MAGIC = (
+    (b"RIFF", "wav"),      # 需配合偏移 8 的 WAVE 校验
+    (b"OggS", "ogg"),
+    (b"ID3", "mp3"),
+    (b"\xff\xfb", "mp3"),
+    (b"\xff\xf3", "mp3"),
+    (b"\xff\xf2", "mp3"),
+    (b"\x1a\x45\xdf\xa3", "webm"),  # EBML
+    (b"fLaC", "flac"),
+    (b"#!AMR", "amr"),
+)
+
+
+def audio_format(path: Path) -> str:
+    """按文件头魔数推断音频格式（默认 wav，宁可失败也不要静默喂错容器）。"""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(16)
+    except OSError:
+        return "wav"
+    if head[:4] == b"RIFF" and head[8:12] == b"WAVE":
+        return "wav"
+    for magic, fmt in _AUDIO_MAGIC:
+        if head.startswith(magic):
+            return fmt
+    # MP4 家族：偏移 4 起是 'ftyp'（m4a 常见 brand 为 M4A ）
+    if head[4:8] == b"ftyp":
+        return "m4a" if head[8:11] == b"M4A" else "mp4"
+    return "wav"
+
+
+def _transcribe_qwen_asr(file_path: Path) -> str:
+    """qwen3-asr-flash：多模态接口 + data URL 直传（无需公网 URL、无需 OSS 上传）。"""
+    _require_key()
+    fmt = audio_format(file_path)
+    try:
+        raw = Path(file_path).read_bytes()
+    except OSError as exc:
+        raise RuntimeError(f"读取音频失败：{exc}") from exc
+    if not raw:
+        raise RuntimeError("音频内容为空")
+    payload = {
+        "model": settings.llm_asr_model,
+        "input": {
+            "messages": [
+                {"role": "user", "content": [
+                    {"audio": f"data:audio/{fmt};base64,{base64.b64encode(raw).decode()}"},
+                ]},
+            ]
+        },
+        # enable_lid：自动识别语种（老人可能说方言/中英混说）；enable_itn：数字与单位规整
+        "parameters": {"asr_options": {"enable_lid": True, "enable_itn": True}},
+    }
+    try:
+        resp = requests.post(settings.asr_multimodal_api_url, headers=_headers(),
+                             json=payload, timeout=120)
+    except requests.RequestException as exc:
+        raise RuntimeError(f"请求失败：{exc}") from exc
+    if resp.status_code >= 400:
+        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:300]}")
+    try:
+        choices = resp.json().get("output", {}).get("choices") or []
+    except ValueError as exc:
+        raise RuntimeError(f"响应不是合法 JSON：{resp.text[:200]}") from exc
+    text = ""
+    for choice in choices:
+        for part in (choice.get("message", {}) or {}).get("content") or []:
+            if isinstance(part, dict):
+                text += part.get("text") or ""
+    text = text.strip()
+    if not text:
+        raise RuntimeError("识别结果为空")
+    return text
 
 
 def _transcribe_modelscope(file_path: Path) -> str:
@@ -355,7 +452,7 @@ def _transcribe_dashscope(file_url: str) -> str:
     if not file_url:
         raise RuntimeError("百炼语音识别需要公网可达的音频 URL（PUBLIC_BASE_URL 未配置）")
     payload = {
-        "model": settings.llm_asr_model,
+        "model": settings.llm_asr_model_para,
         "input": {"file_urls": [file_url]},
     }
     output = _wait_task(_submit_task(settings.asr_api_url, payload))

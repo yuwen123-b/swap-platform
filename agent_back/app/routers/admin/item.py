@@ -3,6 +3,13 @@ from pydantic import BaseModel, Field
 
 from app.db.pool import connection
 from app.routers.admin.deps import ok, require_role
+from app.services.points_service import (
+    DEFAULT_POINTS_PUBLISH,
+    RULE_POINTS_PUBLISH,
+    SOURCE_PUBLISH,
+    award_points,
+    get_int_rule,
+)
 
 router = APIRouter()
 
@@ -50,7 +57,8 @@ def audit_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1, le=100)):
 def audit_item(item_id: int, req: AuditRequest):
     with connection() as conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id, status FROM item WHERE id=%s LIMIT 1", (item_id,))
+            # 多取 user_id / title：审核通过时用于发放发布奖励，并组装流水说明
+            cursor.execute("SELECT id, user_id, title, status FROM item WHERE id=%s LIMIT 1", (item_id,))
             item = cursor.fetchone()
             if not item:
                 raise HTTPException(404, "物品不存在")
@@ -58,6 +66,22 @@ def audit_item(item_id: int, req: AuditRequest):
                 raise HTTPException(400, "该物品不在待审核状态")
             if req.approved:
                 cursor.execute("UPDATE item SET status=1, reject_reason=NULL WHERE id=%s", (item_id,))
+
+                # 发布奖励：只在审核通过时发放，避免「发布即刷分」。
+                # 幂等性说明：本函数开头的 `status != 4 -> 400` 校验使该分支天然幂等——
+                # 同一物品第二次进入时 status 已是 1，会在上面直接返回，不会重复发分。
+                publisher_id = int(item.get("user_id") or 0)
+                if publisher_id:
+                    reward = get_int_rule(cursor, RULE_POINTS_PUBLISH, DEFAULT_POINTS_PUBLISH)
+                    title = (item.get("title") or "").strip()
+                    award_points(
+                        cursor,
+                        publisher_id,
+                        reward,
+                        source=SOURCE_PUBLISH,
+                        related_id=item_id,
+                        description=f"发布物品奖励：{title}" if title else "发布物品奖励",
+                    )
                 return ok(message="审核通过，物品已上架")
             cursor.execute("UPDATE item SET status=3, reject_reason=%s WHERE id=%s", (req.reason, item_id))
             return ok(message="已拒绝该物品上架")

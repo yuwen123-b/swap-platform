@@ -5,8 +5,8 @@
       <h1 class="auth-title">创建你的闲物焕新账号</h1>
 
       <el-radio-group v-model="registerType" class="mode-switch">
-        <el-radio-button label="phone">手机号注册</el-radio-button>
-        <el-radio-button label="email">邮箱注册</el-radio-button>
+        <el-radio-button value="phone">手机号注册</el-radio-button>
+        <el-radio-button value="email">邮箱注册</el-radio-button>
       </el-radio-group>
 
       <el-form @submit.prevent="submit">

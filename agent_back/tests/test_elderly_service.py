@@ -117,10 +117,10 @@ def test_tts_audio_url_returned(monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.voice_service.synthesize",
-        lambda text, lang, rate: "/api/v1/static/tts/abc123.mp3",
+        lambda text, lang, rate: "/api/v1/static/tts/abc123.wav?exp=1&sig=x",
     )
     result = elderly_service.interact(None, user_id=1, text="我想换电饭煲")
-    assert result["response_audio_url"] == "/api/v1/static/tts/abc123.mp3"
+    assert result["response_audio_url"] == "/api/v1/static/tts/abc123.wav?exp=1&sig=x"
     assert result["action_result"]["card"]["status"] == "ok"
 
 

@@ -1,0 +1,25 @@
+KEY 长度 = 39
+
+=== 官方示例 2509 ===
+  model=Qwen/Qwen-Image-Edit-2509
+  提交 HTTP 200  {"task_status": "SUCCEED", "task_id": "25d2a06d-55df-4843-b0e7-6496b6e4b413", "request_id": "4772c5c8-1259-40e4-927c-2b4d93d66a78"}
+  task_id=25d2a06d-55df-4843-b0e7-6496b6e4b413
+  [5] RUNNING (30s)
+  [11] RUNNING (60s)
+  [16] SUCCEED (85s)
+  结果: ["https://modelscope-studios.oss-cn-zhangjiakou.aliyuncs.com/aigc/text-to-image/f9933285-70d1-47d8-a74c-fbaa261f7147.png"]
+  [成功] 已保存 official_2509_1791898448.png  1,025,406 bytes  总耗时 96.9s
+
+=== 官方图 + 2511 + 旋转 ===
+  model=Qwen/Qwen-Image-Edit-2511
+  提交 HTTP 200  {"task_status": "SUCCEED", "task_id": "cead75ca-4409-4987-9861-bc3bfc07dc98", "request_id": "2758efe1-2b51-42c5-9047-1eeb96697d12"}
+  task_id=cead75ca-4409-4987-9861-bc3bfc07dc98
+  [5] RUNNING (30s)
+  [11] RUNNING (60s)
+  [17] RUNNING (90s)
+  [23] RUNNING (120s)
+  [29] RUNNING (150s)
+  [35] RUNNING (180s)
+  [41] RUNNING (210s)
+  [47] RUNNING (240s)
+  [超时] 240s 未完成

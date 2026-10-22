@@ -18,6 +18,9 @@ export const useProfileStore = defineStore('profile', () => {
   const mobilityLevel = ref('free') // free / limited / assisted
   const highContrast = ref(false)
   const language = ref('zh_CN')
+  // 碳积分余额：积分商城（/merchant）与兑换弹窗都从这里读，
+  // 避免同一数字在多处各拉一次接口。数据源仍是 GET /user/profile 的 points 字段。
+  const points = ref(0)
 
   const isVisual = computed(() => accessibilityMode.value === 'visually_impaired')
   const isMobility = computed(() => accessibilityMode.value === 'mobility_impaired')
@@ -39,6 +42,9 @@ export const useProfileStore = defineStore('profile', () => {
     if (p.mobility_level) mobilityLevel.value = p.mobility_level
     if (p.high_contrast !== undefined) highContrast.value = Boolean(p.high_contrast)
     if (p.language) language.value = p.language
+    // points 只认非 undefined：applyFromUser 传的登录返回体里没有该字段，
+    // 不能因为「没传」就把已有余额清成 0。
+    if (p.points !== undefined) setPoints(p.points)
     syncDom()
   }
 
@@ -56,19 +62,42 @@ export const useProfileStore = defineStore('profile', () => {
     })
   }
 
-  async function fetchProfile(id) {
-    const targetId = id ?? userId.value
-    if (!targetId) return
-    const data = await getProfile(targetId)
+  // 档案接口已收口：user_id 由后端从 JWT 解析，前端不再传参
+  async function fetchProfile() {
+    const data = await getProfile()
     apply(data)
     loaded.value = true
     return data
   }
 
+  /* ============================================================
+     碳积分（积分商城用）
+     ============================================================ */
+
+  // 余额只接受非负整数；后端 points 是整数，浮点/空值一律夹紧
+  function setPoints(value) {
+    const n = Math.floor(Number(value))
+    points.value = Number.isFinite(n) && n > 0 ? n : 0
+  }
+
+  // 单独拉一次余额（不覆盖 loaded，避免被当成「档案已加载」）
+  async function fetchPoints() {
+    const data = await getProfile()
+    apply(data)
+    return points.value
+  }
+
+  // 兑换成功后的本地扣减：纯前端记账，真实余额以 /redeem 返回的 points_balance 为准
+  function deductPoints(amount) {
+    const n = Math.floor(Number(amount))
+    if (!Number.isFinite(n) || n <= 0) return points.value
+    setPoints(points.value - n)
+    return points.value
+  }
+
   // 保存到后端并立即更新全局状态；失败时抛出由调用方提示
   async function saveProfile(patch) {
-    if (!userId.value) throw new Error('login required')
-    const data = await updateProfile(userId.value, patch)
+    const data = await updateProfile(patch)
     apply(data)
     return data
   }
@@ -81,6 +110,7 @@ export const useProfileStore = defineStore('profile', () => {
     mobilityLevel.value = 'free'
     highContrast.value = false
     language.value = 'zh_CN'
+    points.value = 0
     const root = document.documentElement
     Object.values(ROOT_CLASS_MAP).forEach((cls) => root.classList.remove(cls))
   }
@@ -95,7 +125,8 @@ export const useProfileStore = defineStore('profile', () => {
 
   return {
     loaded, userId, elderlyMode, accessibilityMode, mobilityLevel,
-    highContrast, language, isVisual, isMobility, rootClasses,
+    highContrast, language, isVisual, isMobility, rootClasses, points,
     apply, applyFromUser, fetchProfile, saveProfile, reset,
+    fetchPoints, deductPoints, setPoints,
   }
 })

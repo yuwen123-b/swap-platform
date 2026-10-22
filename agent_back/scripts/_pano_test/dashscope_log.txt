@@ -1,0 +1,9 @@
+=== 百炼 qwen-image-edit（base64 输入）===
+key 已配置: True
+base64 长度: 40,471
+
+[qwen-image-edit] HTTP 404  耗时 0.7s
+{"code": "InvalidParameter", "message": "Model not exist.", "request_id": "e022ba21-bf95-9fc3-802c-c83dfc50e8cf"}
+
+[qwen-image-edit-2509] HTTP 400  耗时 0.6s
+{"code": "InvalidParameter", "message": "Model not exist.", "request_id": "d5315d0b-51aa-99e9-b17c-c5d758e16b64"}

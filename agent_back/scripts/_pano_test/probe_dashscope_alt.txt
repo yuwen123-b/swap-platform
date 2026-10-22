@@ -1,0 +1,14 @@
+IMAGE_EDIT_API_URL = https://dashscope.aliyuncs.com/api/v1/services/aigc/image2image/image-synthesis
+LLM_IMAGE_EDIT_MODEL = wanx2.1-imageedit
+
+=== E3 百炼可用模型（OpenAI 兼容列表）===
+HTTP 200
+共 176 个模型；图像相关: ["qwen-image-2.1-pro", "qwen-image-3.0-pro", "qwen-image-3.0", "qwen-image-2.0-pro-2026-06-22", "qwen-image-2.0-pro-2026-04-22", "wan2.7-image-pro", "wan2.7-image", "qwen-image-2.0-2026-03-03", "qwen-image-2.0-pro", "qwen-image-2.0-pro-2026-03-03", "qwen-image-2.0", "z-image-turbo"]
+
+=== E2 wanx2.1-imageedit 传 base64 data URL ===
+提交 HTTP 200 (0.6s)
+{"request_id":"32300e97-18b9-96aa-9cf3-fcd8b155a5a7","output":{"task_id":"091f37ef-51cf-464f-b8a1-d62c7fb4db66","task_status":"PENDING"}}
+task_id=091f37ef-51cf-464f-b8a1-d62c7fb4db66
+[2] SUCCEEDED  总耗时 14.2s
+  {"task_id": "091f37ef-51cf-464f-b8a1-d62c7fb4db66", "task_status": "SUCCEEDED", "submit_time": "2026-10-13 21:32:32.736", "scheduled_time": "2026-10-13 21:32:32.807", "end_time": "2026-10-13 21:32:46.115", "results": [{"url": "https://dashscope-5859.oss-cn-wulanchabu-acdr-1.aliyuncs.com/1d/b9/20261013/901e463f/b9bd1cb0-031d-4bce-b7a3-7d21fa2b3ed02355365936.png?Expires=1791984765&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=6a7fBKJa%2BslRYGmazrcMCUvt8uM%3D"}], "task_metrics": {"TOTAL": 1, "S
+  [成功] 已保存 dashscope_wanx_base64_left.png  354,792 bytes

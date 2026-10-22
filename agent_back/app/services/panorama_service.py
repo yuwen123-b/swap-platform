@@ -12,12 +12,13 @@
 import json
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from PIL import Image
 
 from app.core.config import settings
+from app.core.security import sign_file_path
 from app.db.pool import connection
 from app.services import llm_client
 
@@ -25,6 +26,24 @@ logger = logging.getLogger(__name__)
 
 VIEW_NAMES = ("front", "left", "back", "right")
 MAX_FILE_BYTES = 500 * 1024  # 单张视角图大小上限
+
+# generating 状态卡死兜底：超过该分钟数视为失败（如生成进程中途崩溃导致状态悬挂）
+GENERATING_TIMEOUT_MINUTES = 10
+
+# 静态资源前缀（与 files.py 的路由前缀一致；读取时据此补签名）
+_STATIC_PREFIX = f"{settings.api_prefix}/static/"
+
+
+def sign_view_url(url: str) -> str:
+    """把 /api/v1/static/... 相对地址补成带 HMAC 签名的可访问 URL；外链原样返回。
+
+    DB 里始终存相对路径：签名带 1 小时有效期，若把签名 URL 落库，
+    历史数据很快全部失效。因此统一「读取时」现场签名，保证前端拿到的 URL 当下有效。
+    """
+    if not url or not url.startswith(_STATIC_PREFIX):
+        return url
+    relative = url[len(_STATIC_PREFIX):].split("?", 1)[0]
+    return f"{_STATIC_PREFIX}{relative}?{sign_file_path(relative)}"
 
 # 各视角的生成提示词
 _VIEW_PROMPT = {
@@ -49,7 +68,14 @@ def _update_status(item_id: int, status: str, payload: dict | None = None) -> No
     with connection() as conn:
         with conn.cursor() as cursor:
             if payload is None:
-                cursor.execute("UPDATE item SET panorama_status=%s WHERE id=%s", (status, item_id))
+                if status == "generating":
+                    # 置 generating 时记录起始时间：供 get_views 做「卡死超时」兜底判断
+                    cursor.execute(
+                        "UPDATE item SET panorama_status=%s, panorama_generated_at=NOW() WHERE id=%s",
+                        (status, item_id),
+                    )
+                else:
+                    cursor.execute("UPDATE item SET panorama_status=%s WHERE id=%s", (status, item_id))
             else:
                 # ready 时同步回写生成完成时间（独立列，供接口直接读取）
                 cursor.execute(
@@ -161,16 +187,32 @@ def get_views(item_id: int) -> dict:
     if not row:
         raise ValueError("物品不存在")
     status = row.get("panorama_status") or "none"
+    raw_generated = row.get("panorama_generated_at")
+
+    # generating 卡死兜底：起始时间距今超过阈值即判失败，避免前端永久轮询「生成中」
+    if status == "generating" and isinstance(raw_generated, datetime):
+        if datetime.now() - raw_generated > timedelta(minutes=GENERATING_TIMEOUT_MINUTES):
+            logger.warning(
+                "物品 %s 360° 生成超过 %s 分钟未完成，标记为 failed",
+                item_id, GENERATING_TIMEOUT_MINUTES,
+            )
+            try:
+                _update_status(item_id, "failed")
+            except Exception:  # noqa: BLE001 状态回写失败仅记录日志
+                logger.exception("物品 %s panorama_status 超时回写失败", item_id)
+            status = "failed"
+
     payload: dict = {}
     if row.get("panorama_views"):
         try:
             payload = json.loads(row["panorama_views"])
         except json.JSONDecodeError:
             payload = {}
-    generated_at = row.get("panorama_generated_at")
-    if hasattr(generated_at, "isoformat"):
-        generated_at = generated_at.isoformat()
+    generated_at = raw_generated.isoformat() if hasattr(raw_generated, "isoformat") else (raw_generated or "")
     views = payload.get("views") if status == "ready" else None
+    # 读取时补签名：DB 存相对路径，签名的 1 小时有效期由每次读取刷新
+    if views and views.get("front"):
+        views = {name: sign_view_url(url) for name, url in views.items()}
     return {
         "item_id": item_id,
         "panorama_status": status,

@@ -16,7 +16,7 @@ export const useUserStore = defineStore('user', () => {
     // 登录返回中已带持久化的模式/语言配置，立即应用，并在后台拉取最新档案
     const profileStore = useProfileStore()
     profileStore.applyFromUser(data.user)
-    profileStore.fetchProfile(data.user.id).catch(() => {})
+    profileStore.fetchProfile().catch(() => {})
   }
 
   function logout() {
@@ -33,14 +33,14 @@ export const useUserStore = defineStore('user', () => {
     if (user.value) {
       // 本地缓存会话：先用缓存字段即时应用，再后台同步最新档案
       profileStore.applyFromUser(user.value)
-      profileStore.fetchProfile(user.value.id).catch(() => {})
+      profileStore.fetchProfile().catch(() => {})
       return
     }
     try {
       user.value = await getMe()
       localStorage.setItem('user', JSON.stringify(user.value))
       profileStore.applyFromUser(user.value)
-      profileStore.fetchProfile(user.value.id).catch(() => {})
+      profileStore.fetchProfile().catch(() => {})
     } catch {
       logout()
     }

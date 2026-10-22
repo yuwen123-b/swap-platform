@@ -5,6 +5,7 @@ from pathlib import Path
 from app.core.config import settings
 from app.db.pool import connection
 from app.services import llm_client
+from app.services.image_utils import normalize_image_ref
 
 # 无障碍模式枚举
 MODE_NORMAL = "normal"
@@ -93,9 +94,10 @@ def get_profile(user_id: int) -> dict:
 def _first_local_image(images_json: str | None) -> Path | None:
     """解析物品图片 JSON，返回首图本地文件路径；无图、解析失败或文件不存在返回 None。
 
-    item.images 存储形如 ["/api/v1/static/items/xxx.jpg"]，去掉静态前缀即
-    uploads 下的相对路径（与 TTS / 物品图片同一挂载规则）；校验解析结果
-    必须落在 uploads 目录内，防路径穿越。
+    2026-10 起 item.images 只存**相对路径**（`items/xxx.webp`），读取时才签名；
+    历史脏数据里可能仍是带 `?exp=&sig=` 的签名 URL——统一经 `normalize_image_ref`
+    归一成相对路径，两种形态都能解析（与 TTS / 物品图片同一挂载规则）；
+    校验解析结果必须落在 uploads 目录内，防路径穿越。
     """
     if not images_json:
         return None
@@ -105,12 +107,11 @@ def _first_local_image(images_json: str | None) -> Path | None:
         return None
     if not isinstance(urls, list) or not urls:
         return None
-    prefix = f"{settings.api_prefix}/static/"
-    url = str(urls[0])
-    if not url.startswith(prefix):
+    ref = normalize_image_ref(urls[0])
+    if not ref or ref.startswith(("http://", "https://")):
         return None
     root = Path(settings.upload_dir).resolve()
-    path = (root / url[len(prefix):]).resolve()
+    path = (root / ref).resolve()
     if root not in path.parents or path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
         return None
     return path if path.is_file() else None

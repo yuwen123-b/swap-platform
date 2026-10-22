@@ -10,22 +10,14 @@
       <!-- 上传区 -->
       <el-card class="panel" shadow="never">
         <h2 class="panel-title">上传物品照片</h2>
-        <el-upload
-          drag
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          :auto-upload="false"
-          :show-file-list="false"
-          :on-change="onFileChange"
-        >
-          <div v-if="previewUrl" class="preview-wrap">
-            <img :src="previewUrl" alt="待识别图片" />
-          </div>
-          <div v-else class="upload-empty">
-            <el-icon class="upload-icon"><UploadFilled /></el-icon>
-            <div class="upload-tip">拖拽图片到这里，或 <em>点击选择</em></div>
-            <div class="muted upload-sub">支持 jpg/png/webp/gif，最大 5MB</div>
-          </div>
-        </el-upload>
+
+        <!-- 公共上传组件：mode=identify 时保留拖拽落区，并补充「图片上传 / 拍照上传」两个按钮 -->
+        <ImageUploader
+          v-model="file"
+          mode="identify"
+          preview-alt="待识别图片"
+          :max-size="MAX_IMAGE_SIZE"
+        />
 
         <div class="upload-actions">
           <el-button
@@ -76,13 +68,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import ImageUploader from '../components/ImageUploader.vue'
 import { recognitionImage } from '../api/ai'
 
+// 与后端 app/api/v1/ai.py 的 MAX_IMAGE_SIZE 保持一致
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
 const file = ref(null)
-const previewUrl = ref('')
 const loading = ref(false)
 const result = ref(null)
 
@@ -101,19 +95,10 @@ function categoryText(category) {
   return CATEGORY_KEY[category] || category
 }
 
-function onFileChange(uploadFile) {
-  const raw = uploadFile.raw
-  if (!raw) return
-  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(raw.type)) {
-    return ElMessage.warning('仅支持 jpg/png/webp/gif 格式图片')
-  }
-  if (raw.size > 5 * 1024 * 1024) {
-    return ElMessage.warning('图片大小不能超过 5MB')
-  }
-  file.value = raw
-  previewUrl.value = URL.createObjectURL(raw)
+// 换图后清空上一件物品的结果，避免「新图配旧结果」
+watch(file, () => {
   result.value = null
-}
+})
 
 async function recognize() {
   if (!file.value) return
@@ -132,7 +117,6 @@ async function recognize() {
 
 function reset() {
   file.value = null
-  previewUrl.value = ''
   result.value = null
 }
 </script>
@@ -153,48 +137,6 @@ function reset() {
 .panel-title {
   font-size: 19px;
   margin-bottom: 20px;
-}
-
-.upload-empty {
-  padding: 34px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.upload-icon {
-  font-size: 40px;
-  color: var(--green-primary);
-  opacity: 0.7;
-}
-
-.upload-tip {
-  font-size: 14px;
-  color: var(--text-primary, #1f2937);
-}
-
-.upload-tip em {
-  color: var(--green-primary);
-  font-style: normal;
-  font-weight: 600;
-}
-
-.upload-sub {
-  font-size: 12px;
-}
-
-.preview-wrap {
-  max-height: 300px;
-  display: grid;
-  place-items: center;
-}
-
-.preview-wrap img {
-  max-width: 100%;
-  max-height: 280px;
-  border-radius: 12px;
-  object-fit: contain;
 }
 
 .upload-actions {

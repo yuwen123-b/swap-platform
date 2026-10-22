@@ -161,13 +161,23 @@ async function loadHandover() {
 }
 
 async function loadLabel() {
-  if (!itemId.value) return
+  if (!itemId.value) {
+    tip.value = '请先填写语音标签 ID'
+    return
+  }
   try {
-    const data = await getVoiceLabel(itemId.value, state.locale)
+    // 语言取全局档案设置：此前误用从未定义的 `state.locale`，
+    // 使得本函数必然抛 ReferenceError 并被 catch 吞成通用提示（「点了没反应」的真因）。
+    const data = await getVoiceLabel(itemId.value, profileStore.language || 'zh_CN')
     voiceLabel.value = data.label
     speak(data.label)
-  } catch {
-    tip.value = '操作失败，请稍后再试'
+  } catch (error) {
+    // 区分「物品不存在」与「网络/服务异常」，避免再次吞掉真因
+    const status = error?.response?.status
+    const serverMsg = error?.response?.data?.message || ''
+    tip.value = status === 404
+      ? (serverMsg || '未找到该物品的语音标签，请检查 ID')
+      : (serverMsg || '操作失败，请稍后再试')
   }
 }
 

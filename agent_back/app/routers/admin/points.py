@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 from app.db.pool import connection
 from app.routers.admin.deps import ok, require_role
+from app.services.points_service import SOURCE_ADMIN, award_points
 
 router = APIRouter()
 
@@ -55,10 +56,22 @@ def adjust_points(req: PointsAdjust, admin: dict = Depends(write_roles)):
             user = cursor.fetchone()
             if not user:
                 raise HTTPException(404, "用户不存在")
-            cursor.execute("UPDATE user SET points=points+%s WHERE id=%s", (req.points, req.user_id))
-            cursor.execute(
-                "INSERT INTO points_log (user_id, points, source, related_id, description) VALUES (%s,%s,4,%s,%s)",
-                (req.user_id, req.points, admin["admin_id"], f"[管理员调整] {req.reason}"),
+            # 改用 points_service.award_points：统一在 UPDATE user.points 之后回读余额，
+            # 让 points_log.balance 与 user.points 保持一致。
+            # （原实现直接 INSERT，漏写 balance，落库恒为 0，与其它来源的流水不一致）
+            #
+            # related_id 必须为 None：points_log 的唯一索引
+            # uk_points_log_source(source, related_id, user_id) 是「同一笔业务不重复发放」的
+            # 数据库级闸门，而管理员调整每次都是**独立事件**，不存在「同一笔业务」的语义。
+            # MySQL 唯一索引不约束 NULL，写 NULL 才能让同一管理员对同一用户反复加分/扣分；
+            # 若沿用 admin_id，第二次调整就会撞唯一键被拒（409）。
+            award_points(
+                cursor,
+                req.user_id,
+                req.points,
+                source=SOURCE_ADMIN,
+                related_id=None,
+                description=f"[管理员调整] {req.reason}",
             )
     return ok(message="积分调整成功")
 

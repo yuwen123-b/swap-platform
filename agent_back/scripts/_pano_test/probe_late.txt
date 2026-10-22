@@ -1,0 +1,14 @@
+=== 回查历史任务最终状态 ===
+[base64 编辑任务（21:21 提交）] RUNNING
+   {"request_id": "", "task_id": "620b21a8-538e-479b-9ed2-d918f7d7b7ed", "task_status": "RUNNING", "outputs": {}}
+[公网URL 编辑任务（21:25 提交）] RUNNING
+   {"request_id": "", "task_id": "a266afe0-87a8-4203-99c5-d7a7281e8bda", "task_status": "RUNNING", "outputs": {}}
+
+=== 对照实验：纯文生图（无 image_url）===
+提交 HTTP 200 (0.8s)  {"task_status":"SUCCEED","task_id":"b637fa52-da42-482a-80f8-370a1b701423","request_id":"2f7af503-b307-4490-90a1-2667d005865f"}
+[0] RUNNING (5s)
+[1] RUNNING (10s)
+[2] RUNNING (15s)
+[3] RUNNING (20s)
+[4] SUCCEED (25s)
+  {"input": {"outputs": {}}, "output_images": ["https://modelscope-studios.oss-cn-zhangjiakou.aliyuncs.com/aigc/text-to-image/1fa7f07a-038a-493d-a2ab-ca2e9c874791.png"], "request_id": "2a199c07-ad65-490b-ad91-026b6ce07f1a", "task_id": "b637fa52-da42-482a-80f8-370a1b701423", "task_status": "SUCCEED", "time_taken": null}

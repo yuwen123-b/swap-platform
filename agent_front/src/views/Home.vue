@@ -18,16 +18,29 @@
         @change="onChange"
       >
         <el-carousel-item v-for="slide in heroSlides" :key="slide.id">
-          <img class="kb-img" :src="slide.image" :alt="themeText(slide.id)" draggable="false" />
+          <!-- @error 兜底：底图不可达（Unsplash 国内常不可达）时隐藏破图，露出 .hero 品牌渐变 -->
+          <img class="kb-img" :src="slide.image" :alt="themeText(slide.id)" draggable="false" @error="onHeroImgError" />
         </el-carousel-item>
       </el-carousel>
 
       <!-- 渐变遮罩：左深右透，保证文案可读；底部压暗托住缩略图 -->
       <div class="hero-mask"></div>
 
+      <!-- 断网兜底：4 张底图全裂时显示纯 CSS 品牌底纹（绝不出现空白首屏） -->
+      <div v-if="heroAllBroken" class="hero-fallback" aria-hidden="true">
+        <div class="hero-fallback-inner">
+          <span class="hero-fallback-mark">闲物焕新</span>
+          <span class="hero-fallback-sub">让每件物品抵达下一段故事</span>
+        </div>
+      </div>
+
       <!-- 顶层文案 -->
       <div class="hero-content">
-        <span class="hero-eyebrow">社区 · 循环 · 智能</span>
+        <!-- 品牌标识层：品牌名放进首屏最大视觉权重处 + 随轮播切换的主题标签 -->
+        <div class="hero-kicker">
+          <span class="hero-eyebrow">闲物焕新 · 闲置物品循环平台</span>
+          <span class="hero-theme" :key="activeIndex">{{ activeTheme }}</span>
+        </div>
         <h1 class="hero-title">让闲置物品流动起来</h1>
         <p class="hero-sub">
           在邻里之间交换旧物，用一份信任连接彼此，让每一次分享都成为更轻盈、更温暖的生活选择。
@@ -52,7 +65,7 @@
           :title="themeText(slide.id)"
           @click="goSlide(i)"
         >
-          <img :src="slide.thumb" :alt="themeText(slide.id)" />
+          <img :src="slide.thumb" :alt="themeText(slide.id)" @error="onThumbImgError" />
         </button>
       </div>
 
@@ -150,7 +163,7 @@
                   <div class="item-meta">
                     <span class="meta">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      本社区
+                      {{ item.distanceKm == null ? '本社区' : `距你 ${item.distanceKm}km` }}
                     </span>
                     <span class="meta carbon">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
@@ -168,16 +181,6 @@
             <p class="green-empty-text">还没有邻居上传物品哦～</p>
           </div>
 
-          <!-- 距离排序等开发中提示 -->
-          <el-alert
-            v-if="showDistanceTip && !itemsLoading"
-            class="items-tip"
-            title="距离排序功能开发中"
-            type="info"
-            show-icon
-            :closable="false"
-          />
-
           <!-- 接口错误：仅提示，不崩溃 -->
           <el-alert
             v-if="itemsError && !itemsLoading"
@@ -190,7 +193,35 @@
         </div>
       </section>
 
-      <!-- 5. 邻里互换故事 -->
+      <!-- 5. 公开需求墙：邻居们正在寻找的物品（只展示进行中，隐藏手机号） -->
+      <section v-if="demandWall.length" class="demand-section">
+        <div class="section-head demand-head">
+          <div>
+            <span class="sec-eyebrow">邻里互助</span>
+            <h2 class="sec-title">邻居们正在找这些</h2>
+          </div>
+          <button type="button" class="demand-more" @click="go('/demands')">查看全部需求</button>
+        </div>
+        <div class="demand-grid">
+          <button
+            v-for="d in demandWall"
+            :key="d.id"
+            type="button"
+            class="demand-card"
+            @click="contactDemandOwner(d)"
+          >
+            <span class="demand-title">{{ d.title || '未命名需求' }}</span>
+            <span class="demand-meta">
+              <span v-if="d.category" class="demand-tag">{{ d.category }}</span>
+              <span class="demand-who">
+                {{ d.nickname || '社区邻居' }}<template v-if="d.building"> · {{ d.building }}</template>
+              </span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 6. 邻里互换故事 -->
       <section class="story-section">
         <div class="section-head">
           <span class="sec-eyebrow">社区温情</span>
@@ -227,16 +258,21 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   categories as rawCategories,
   heroSlides,
   lowCarbonStats,
   swapStories as rawSwapStories,
 } from '../mock/home'
+import { mockItems as rawMockItems } from '../mock/items'
 import { getItems } from '../api/item'
+import { getDemandWall } from '../api/demand'
+import { useUserStore } from '../store/user'
 
 const router = useRouter()
 const go = (path) => router.push(path)
+const userStore = useUserStore()
 
 /* ---------- mock 数据按 id 映射文案 ---------- */
 const THEME_TEXT = { 1: '绿色社区', 2: '旧物改造', 3: '二手书籍', 4: '邻里交换' }
@@ -279,6 +315,29 @@ function goSlide(index) {
   carouselRef.value?.setActiveItem(index)
 }
 
+/* 当前屏主题词：随轮播切换显示在标题上方（原先只藏在 alt/title 里，页面上看不到） */
+const activeTheme = computed(() => heroSlides[activeIndex.value]?.theme || '绿色社区')
+
+/* ---------- Hero 底图兜底 ----------
+   Unsplash 在国内网络经常不可达，而 Hero 原先没有 @error 处理：
+   4 张图全裂时首屏会只剩一块深绿空背景 + 白字。
+   这里分两级兜底：
+     ① 单张裂掉 → 隐藏该 <img>，露出 .hero 的品牌渐变（不显示浏览器破图图标）；
+     ② 全部裂掉 → 额外浮出 .hero-fallback 品牌底纹层（大号品牌字 + 标语），
+        让完全断网时首屏仍是一个「完整的品牌开屏」，而不是空白块。 */
+const heroBrokenCount = ref(0)
+const heroAllBroken = computed(() => heroSlides.length > 0 && heroBrokenCount.value >= heroSlides.length)
+
+function onHeroImgError(event) {
+  if (event?.target) event.target.style.display = 'none'
+  heroBrokenCount.value += 1
+}
+
+/* 缩略图裂掉只隐藏自身（缩略图不参与「全裂兜底」计数，避免重复计算） */
+function onThumbImgError(event) {
+  if (event?.target) event.target.style.display = 'none'
+}
+
 /* ---------- 邻居上传物品：从后端真实接口获取 ---------- */
 // 绿色默认占位图（内联 SVG，无需额外文件）
 const FALLBACK_IMAGE =
@@ -301,7 +360,6 @@ const SORT_PARAM = {
 const items = ref([])
 const itemsLoading = ref(false)
 const itemsError = ref(false)
-const showDistanceTip = ref(false)
 
 const MODE_TEXT = { 1: '免费送出', 2: '物物交换', 3: '积分兑换' }
 function modeText(code) {
@@ -310,6 +368,46 @@ function modeText(code) {
 const CONDITION_TEXT = { 1: '成色一般', 2: '七成新', 3: '八成新', 4: '九成新', 5: '几乎全新' }
 function conditionText(level) {
   return CONDITION_TEXT[level] || '状态良好'
+}
+
+function parseDistanceValue(distance) {
+  const match = String(distance || '').match(/\d+(?:\.\d+)?/)
+  return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER
+}
+
+function normalizeFallbackItem(item) {
+  const modeKey = String(item.exchange_mode || '')
+  const modeCode =
+    modeKey.includes('赠送') || modeKey.includes('免费送出') ? 1 :
+    modeKey.includes('交换') || modeKey.includes('物物交换') ? 2 :
+    modeKey.includes('积分') ? 3 :
+    2
+
+  const conditionTextValue = String(item.condition || '')
+  const conditionLevel =
+    conditionTextValue.includes('全新') ? 5 :
+    conditionTextValue.includes('九成新') ? 4 :
+    conditionTextValue.includes('八成新') ? 3 :
+    conditionTextValue.includes('七成新') ? 2 :
+    1
+
+  return {
+    id: item.id,
+    title: item.title,
+    image: item.image || FALLBACK_IMAGE,
+    conditionLevel,
+    modeCode,
+    carbon: Number(item.carbon || 0),
+    panoramaStatus: item.panorama_status || 'ready',
+    distance: parseDistanceValue(item.distance),
+  }
+}
+
+function getFallbackItems(sortKey = 'latest') {
+  const list = rawMockItems.map(normalizeFallbackItem)
+  if (sortKey === 'carbon') return [...list].sort((a, b) => Number(b.carbon) - Number(a.carbon))
+  if (sortKey === 'nearest') return [...list].sort((a, b) => a.distance - b.distance)
+  return list
 }
 
 // images 可能是 JSON 字符串，也可能已被驱动解析成数组
@@ -335,42 +433,73 @@ function normalize(item) {
     modeCode: item.exchange_mode,
     carbon: Number(item.carbon_value || 0),
     panoramaStatus: item.panorama_status,
+    // 距离排序时后端才会返回 distance_km（未公开位置 / 无坐标的物品为 undefined）
+    distanceKm: item.distance_km ?? null,
   }
 }
 
-async function loadItems() {
+/* 「离我最近」依赖用户位置：未设置时给出可操作的引导，而不是静默回滚筛选值 */
+function guideToSetLocation() {
+  const loggedIn = userStore.isLoggedIn
+  ElMessageBox.confirm(
+    loggedIn
+      ? '设置位置后即可查看离你最近的物品。'
+      : '登录并设置位置后即可查看离你最近的物品。',
+    loggedIn ? '尚未设置位置' : '尚未登录',
+    {
+      confirmButtonText: loggedIn ? '去设置位置' : '去登录',
+      cancelButtonText: '稍后再说',
+      type: 'warning',
+    },
+  )
+    .then(() => go(loggedIn ? '/profile/location' : '/login?redirect=/'))
+    .catch(() => {})
+}
+
+async function loadItems(isRetry = false) {
   itemsLoading.value = true
   itemsError.value = false
-  showDistanceTip.value = false
+  const requestedFilter = activeFilter.value
+  const isNearest = requestedFilter === 'nearest'
   try {
     const data = await getItems(
       {
         page: 1,
         size: 8,
-        sort_by: SORT_PARAM[activeFilter.value],
+        sort_by: SORT_PARAM[requestedFilter],
       },
-      // 距离排序会 400，改为页面内“开发中”提示，不弹红色错误 toast
-      { skipErrorToast: activeFilter.value === 'nearest' },
+      // 后端离线时走本地 mock，静默降级，不弹红色错误 toast
+      { skipErrorToast: true },
     )
+    // 已登录但未设置位置：后端返回 need_location，明确引导并回退到「最新发布」
+    if (isNearest && data?.need_location) {
+      activeFilter.value = 'latest'
+      if (!isRetry) await loadItems(true)
+      guideToSetLocation()
+      return
+    }
+    if (isNearest && data?.distance_sorted && !(data.nearby_count > 0)) {
+      // 排序已生效，只是当前没有已公开位置的物品——明确告知，避免又被当成「点了没反应」
+      ElMessage.info('附近暂无已公开位置的物品，已按默认顺序展示')
+    }
     items.value = (data.items || []).map(normalize)
   } catch (error) {
-    // 注意：HTTP 4xx 走 axios 错误拦截器，后端提示在 response.data.message
-    const serverMsg = error?.response?.data?.message || error?.message || ''
-    // 距离排序后端明确返回“开发中”：回退筛选并重新加载最新数据
-    if (serverMsg.includes('距离排序')) {
-      showDistanceTip.value = true
+    // 注意：FastAI 返回 {"detail": "..."}，需同时检查 message 和 detail
+    const serverMsg = error?.response?.data?.message || error?.response?.data?.detail || error?.message || ''
+    if (isNearest) {
+      // 未登录（后端 400）或距离排序不可用：回退筛选并重新加载最新数据
       activeFilter.value = 'latest'
-      try {
-        const data = await getItems({ page: 1, size: 8, sort_by: 'created_at' })
-        items.value = (data.items || []).map(normalize)
-      } catch {
-        items.value = []
-        itemsError.value = true
+      if (!isRetry) await loadItems(true)
+      if (serverMsg.includes('位置')) {
+        // 需要用户去设置位置：给可操作的入口（不重复弹 toast）
+        guideToSetLocation()
+      } else {
+        ElMessage.warning(serverMsg || '距离排序暂时不可用，已切换回最新发布')
       }
-    } else {
-      items.value = []
-      itemsError.value = true
+      return
     }
+    items.value = getFallbackItems(requestedFilter)
+    itemsError.value = false
   } finally {
     itemsLoading.value = false
   }
@@ -386,6 +515,39 @@ function modeClass(code) {
   return 'mode-swap'
 }
 
+/* ---------- 公开需求墙（只展示进行中，后端已排除自己的需求） ---------- */
+const demandWall = ref([])
+
+async function loadDemands() {
+  try {
+    // 失败静默隐藏该区：首页不因需求墙不可用而出现错误提示或空白块
+    const data = await getDemandWall({ limit: 6 }, { skipErrorToast: true })
+    demandWall.value = data?.list || []
+  } catch {
+    demandWall.value = []
+  }
+}
+
+// 点击一条需求 -> 打开与发布者的私信（Message.vue 支持 ?otherUserId= 直达会话）
+function contactDemandOwner(demand) {
+  if (!userStore.isLoggedIn) {
+    ElMessageBox.confirm('登录后即可直接私信邻居，聊聊你们的需求。', '尚未登录', {
+      confirmButtonText: '去登录',
+      cancelButtonText: '稍后再说',
+      type: 'info',
+    })
+      .then(() => go('/login?redirect=/'))
+      .catch(() => {})
+    return
+  }
+  // 后端已排除自己的需求，这里是防御性判断
+  if (userStore.user?.id && demand.user_id === userStore.user.id) {
+    ElMessage.info('这是你自己发布的需求')
+    return
+  }
+  go(`/messages?otherUserId=${demand.user_id}`)
+}
+
 /* 图片加载失败：仅回填一次默认绿色占位图，避免死循环 */
 function onImgError(event) {
   const img = event.target
@@ -396,6 +558,7 @@ function onImgError(event) {
 
 onMounted(() => {
   loadItems()
+  loadDemands()
 })
 
 /* ---------- 低碳数据（数据看板 UI 已下线，逻辑保留） ---------- */
@@ -443,7 +606,11 @@ function runCountUp() {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   overflow: hidden;
-  background: var(--c-deep);
+  /* 兜底底色：底图不可达时展示品牌渐变 —— 既不是空白，也不是一块死绿 */
+  background:
+    radial-gradient(120% 90% at 12% 16%, rgba(76, 175, 80, 0.52) 0%, rgba(46, 125, 50, 0) 62%),
+    radial-gradient(110% 84% at 88% 84%, rgba(15, 118, 110, 0.48) 0%, rgba(15, 118, 110, 0) 64%),
+    linear-gradient(135deg, #1f5c33 0%, var(--c-deep) 46%, #14524f 100%);
 }
 
 /* el-carousel 淡入淡出覆写（替换默认横向滑动） */
@@ -514,6 +681,79 @@ function runCountUp() {
   padding: 0 8vw;
 }
 
+/* 断网兜底层：位于底图之上、遮罩之下（z-index:2 < mask 3 < content 5）。
+   仅当 4 张底图全部加载失败时渲染，用大号品牌字把空首屏兜成「品牌开屏」。 */
+.hero-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.hero-fallback-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  /* 轻微右移，避免与左侧文案重叠 */
+  transform: translateX(14vw);
+}
+
+.hero-fallback-mark {
+  color: rgba(255, 255, 255, 0.15);
+  font-size: clamp(64px, 11vw, 170px);
+  font-weight: 800;
+  letter-spacing: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hero-fallback-sub {
+  color: rgba(200, 230, 201, 0.34);
+  font-size: clamp(13px, 1.3vw, 19px);
+  letter-spacing: 6px;
+}
+
+/* 品牌标识层：品牌名 + 随轮播切换的主题标签 */
+.hero-kicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hero-kicker .hero-eyebrow {
+  align-self: center;
+}
+
+.hero-theme {
+  padding: 7px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* 每次切屏重新挂载（:key="activeIndex"）触发一次淡入 */
+  animation: themeIn 0.5s ease both;
+}
+
+@keyframes themeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .hero-eyebrow {
   align-self: flex-start;
   padding: 7px 16px;
@@ -522,7 +762,8 @@ function runCountUp() {
   background: rgba(76, 175, 80, 0.16);
   color: var(--c-mint);
   font-size: 13px;
-  letter-spacing: 3px;
+  /* 文案已改为品牌全称（比原来的「社区 · 循环 · 智能」长），字距收到 2px */
+  letter-spacing: 2px;
 }
 
 .hero-title {
@@ -619,6 +860,8 @@ function runCountUp() {
   overflow: hidden;
   opacity: 0.6;
   cursor: pointer;
+  /* 缩略图裂掉（隐藏 <img>）时露出品牌渐变，不留透明空洞 */
+  background: linear-gradient(135deg, var(--c-main), var(--c-deep));
   transition: transform 0.3s, opacity 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
@@ -743,6 +986,7 @@ function runCountUp() {
 /* 通用 Section 头部 */
 .cate-section,
 .items-section,
+.demand-section,
 .story-section {
   max-width: 1060px;
   margin: 64px auto 0;
@@ -972,6 +1216,110 @@ function runCountUp() {
   margin-top: 18px;
 }
 
+/* ================= 公开需求墙 ================= */
+.demand-section {
+  /* 局部令牌：高对比度主题下由文件末尾的非 scoped 块改写 */
+  --dw-card: #ffffff;
+  --dw-border: rgba(76, 175, 80, 0.22);
+  --dw-text: var(--text-primary, #1b3a26);
+  --dw-sub: var(--text-secondary, #63786d);
+}
+
+.demand-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* 「查看全部需求」：描边胶囊按钮，与首页既有 CTA 风格一致 */
+.demand-more {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 8px 20px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dw-text);
+  background: transparent;
+  border: 1px solid var(--dw-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.demand-more:hover {
+  color: var(--c-deep);
+  border-color: var(--c-main);
+  background: rgba(76, 175, 80, 0.08);
+}
+
+.demand-more:focus-visible {
+  outline: 3px solid var(--c-main);
+  outline-offset: 2px;
+}
+
+.demand-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.demand-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  text-align: left;
+  font: inherit;
+  background: var(--dw-card);
+  border: 1px solid var(--dw-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.demand-card:hover {
+  border-color: var(--c-main);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 26px rgba(46, 125, 50, 0.14);
+}
+
+.demand-card:focus-visible {
+  outline: 3px solid var(--c-main);
+  outline-offset: 2px;
+}
+
+.demand-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--dw-text);
+}
+
+.demand-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.demand-tag {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-deep);
+  background: #e8f5e9;
+  border-radius: 999px;
+}
+
+.demand-who {
+  font-size: 13px;
+  color: var(--dw-sub);
+}
+
 /* 邻里故事 */
 .story-card {
   height: calc(100% - 18px);
@@ -1063,6 +1411,10 @@ function runCountUp() {
     grid-template-columns: repeat(4, 1fr);
   }
 
+  .demand-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .ai-bridge {
     flex-direction: column;
     align-items: stretch;
@@ -1105,5 +1457,118 @@ function runCountUp() {
   .cate-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  .demand-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   手机端（≤767px）：AI 智能管家卡片竖向友好布局
+   ------------------------------------------------------------
+   实测 375px 下的问题（CDP 盒模型取证）：
+   ① .ai-emoji 被 .ai-left 的 flex 压扁成 39×52（应为 52×52）；
+   ② 900px 断点的 .ai-actions{justify-content:flex-end} 让两个
+      按钮右对齐，左侧留出一截突兀的空白；
+   ③ 28px 左右内边距在手机上偏大。
+   本块源码顺序在 900/560 断点之后，同优先级下后者生效，
+   可直接覆盖上面两条，无需改动它们。
+   ============================================================ */
+@media (max-width: 767px) {
+  .ai-bridge {
+    margin-top: -40px;
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+
+  /* 修①：emoji 底座禁止被压缩 */
+  .ai-emoji {
+    flex-shrink: 0;
+  }
+
+  .ai-left {
+    gap: 12px;
+  }
+
+  .ai-title {
+    font-size: 16px;
+    line-height: 1.35;
+  }
+
+  .ai-desc {
+    margin-top: 3px;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+
+  /* 修②：两个按钮等宽并排、占满整行（替代右对齐） */
+  .ai-actions {
+    justify-content: stretch;
+    gap: 10px;
+  }
+
+  .ai-actions .el-button {
+    flex: 1 1 0;
+    /* 关键：flex 的默认 min-width 是 min-content，"让 AI 帮你估价"更长时
+       会撑住不肯缩，两个按钮就不等宽了。配合收紧的 padding 与 14px 字号，
+       min-content 才小于 1/2 行宽，flex 才能真正均分。 */
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 6px;
+    font-size: 14px;
+    white-space: nowrap;
+    /* Element Plus 相邻按钮默认 margin-left:12px，flex 布局下用 gap 已足够 */
+    margin-left: 0;
+  }
+
+  .ai-actions .el-button + .el-button {
+    margin-left: 0;
+  }
+}
+</style>
+
+<!-- ============================================================
+     需求墙的高对比度 / 助老模式适配
+     必须非 scoped 才能命中 html 根级选择器
+     ============================================================ -->
+<style>
+html.theme-high-contrast .demand-section {
+  --dw-card: #000000;
+  --dw-border: #ffffff;
+}
+
+html.theme-high-contrast .demand-section .demand-card {
+  background: #000000;
+  border-color: #ffffff;
+}
+
+html.theme-high-contrast .demand-section .demand-tag {
+  color: #000000;
+  background: #4ade80;
+}
+
+html.theme-high-contrast .demand-section .demand-more {
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+/* 助老模式：文字与点击目标放大 */
+html.mode-elderly .demand-section .demand-title {
+  font-size: 20px;
+}
+
+html.mode-elderly .demand-section .demand-who,
+html.mode-elderly .demand-section .demand-tag {
+  font-size: 18px;
+}
+
+html.mode-elderly .demand-section .demand-card {
+  padding: 24px;
+}
+
+html.mode-elderly .demand-section .demand-more {
+  min-height: 60px;
+  padding: 12px 26px;
+  font-size: 18px;
 }
 </style>

@@ -66,7 +66,7 @@ def agent_stream(question: str = Query(..., min_length=1, max_length=500), user_
     def event_source():
         status, error = 1, None
         try:
-            for token in agent.stream_tokens(question, "zh"):
+            for token in agent.stream_tokens(question, "zh", user_id):
                 parts.append(token)
                 yield f"data: {json.dumps({'msg': token}, ensure_ascii=False)}\n\n"
         except Exception as exc:  # 流中异常：告知前端并留日志

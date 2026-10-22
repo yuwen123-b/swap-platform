@@ -1,0 +1,86 @@
+BASE = https://api-inference.modelscope.cn/v1
+SRC  = D:\Project\agent_back\scripts\_pano_test\source_camera.jpg  exists=True
+原图 base64 长度 = 40,471
+
+--- GET /v1/models ---
+HTTP 200
+{"object":"list","data":[{"id":"deepseek-ai/DeepSeek-V4-Flash-0731","object":"","owned_by":"system","created":1785767088},{"id":"deepseek-ai/DeepSeek-V4-Pro","object":"","owned_by":"system","created":1782297885},{"id":"deepseek-ai/DeepSeek-V4-Pro-0813","object":"","owned_by":"system","created":1787068235},{"id":"deepseek-ai/DeepSeek-V4.1-Flash","object":"","owned_by":"system","created":1789386292},{"id":"early-access/EA-29B-A4B","object":"","owned_by":"system","created":1787329971},{"id":"MedAIBase/AntAngelMed","object":"","owned_by":"system","created":1778513905},{"id":"meituan-longcat/LongCa
+
+--- 同步 images/generations（纯文本） ---
+HTTP 400
+{"errors":{"message":"image_url is required for model: Qwen/Qwen-Image-Edit-2511"},"request_id":"a7e9e2f5-40f6-4085-b529-b9d0178d2623"}
+
+--- 同步 images/generations（带 image 字段） ---
+HTTP 400
+{"errors":{"message":"image_url is required for model: Qwen/Qwen-Image-Edit-2511"},"request_id":"bd422213-2e25-4cbb-87b4-055d1b27c1be"}
+
+=== 异步任务模式 ===
+
+--- 异步 images/generations ---
+HTTP 200
+{"task_status":"SUCCEED","task_id":"620b21a8-538e-479b-9ed2-d918f7d7b7ed","request_id":"e7b67d90-bc8d-4237-b2c9-bf8d73f83655"}
+  提交成功，task_id=620b21a8-538e-479b-9ed2-d918f7d7b7ed，开始轮询…
+  [0] RUNNING
+  [1] RUNNING
+  [2] RUNNING
+  [3] RUNNING
+  [4] RUNNING
+  [5] RUNNING
+  [6] RUNNING
+  [7] RUNNING
+  [8] RUNNING
+  [9] RUNNING
+  [10] RUNNING
+  [11] RUNNING
+  [12] RUNNING
+  [13] RUNNING
+  [14] RUNNING
+  [15] RUNNING
+  [16] RUNNING
+  [17] RUNNING
+  [18] RUNNING
+  [19] RUNNING
+  [20] RUNNING
+  [21] RUNNING
+  [22] RUNNING
+  [23] RUNNING
+  [24] RUNNING
+  [25] RUNNING
+  [26] RUNNING
+  [27] RUNNING
+  [28] RUNNING
+  [29] RUNNING
+  [30] RUNNING
+  [31] RUNNING
+  [32] RUNNING
+  [33] RUNNING
+  [34] RUNNING
+  [35] RUNNING
+  [36] RUNNING
+  [37] RUNNING
+  [38] RUNNING
+  [39] RUNNING
+  [40] RUNNING
+  [41] RUNNING
+  [42] RUNNING
+  [43] RUNNING
+  [44] RUNNING
+  [45] RUNNING
+  [46] RUNNING
+  [47] RUNNING
+  [48] RUNNING
+  [49] RUNNING
+  [50] RUNNING
+  [51] RUNNING
+  [52] RUNNING
+  [53] RUNNING
+  [54] RUNNING
+  [55] RUNNING
+  [56] RUNNING
+  [57] RUNNING
+  [58] RUNNING
+  [59] RUNNING
+
+--- 异步 /images/edits ---
+HTTP 404
+404 page not found

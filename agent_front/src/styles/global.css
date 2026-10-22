@@ -225,6 +225,52 @@ nav.topnav a:hover::after {
   font-weight: 500;
 }
 
+/* ---------- 私信入口（顶部 .account 区，图标 + 未读角标） ----------
+   该入口原先在主导航里（文字项「我的私信」），移到此处后：
+   ① 主导航 8 项降为 7 项，缓解 ≤1100px 换行压力；
+   ② 私信是高频入口，用图标 + 角标比文字更能传递「有未读」的信息。 */
+.msg-entry {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  transition: color 0.2s, background 0.2s;
+}
+
+.msg-entry:hover,
+.msg-entry.router-link-active {
+  color: var(--green-primary);
+  background: var(--green-soft);
+}
+
+.msg-entry svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 未读角标：红底白字，外描一圈顶栏底色做隔离，避免与信封图标糊在一起 */
+.msg-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  box-sizing: content-box;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #e53935;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  white-space: nowrap;
+}
+
 main {
   width: min(1180px, 88vw);
   margin: 0 auto;
@@ -454,6 +500,19 @@ footer.site-footer {
 }
 
 /* ---------- 响应式 ---------- */
+@media (max-width: 1100px) {
+  .topbar nav.topnav {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar nav.topnav {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
 @media (max-width: 800px) {
   .topbar {
     height: auto;
@@ -508,6 +567,24 @@ html.mode-elderly nav.topnav {
 
 html.mode-elderly .account {
   font-size: 16px;
+}
+
+/* 助老模式：图标入口与角标一并放大，保证可点可读 */
+html.mode-elderly .msg-entry {
+  width: 44px;
+  height: 44px;
+}
+
+html.mode-elderly .msg-entry svg {
+  width: 24px;
+  height: 24px;
+}
+
+html.mode-elderly .msg-badge {
+  min-width: 18px;
+  height: 18px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 html.mode-elderly .page-title,
@@ -696,6 +773,24 @@ html.theme-high-contrast .chip {
   border: 1px solid #4ade80;
 }
 
+/* 私信入口：高对比度下改为黑底白图标（悬停/选中转绿），
+   角标翻转为绿底黑字（与 .el-button--primary 同一套反转口径）。 */
+html.theme-high-contrast .msg-entry {
+  color: #ffffff;
+}
+
+html.theme-high-contrast .msg-entry:hover,
+html.theme-high-contrast .msg-entry.router-link-active {
+  color: #4ade80;
+  background: transparent;
+}
+
+html.theme-high-contrast .msg-badge {
+  background: #4ade80;
+  color: #000000;
+  border-color: #000000;
+}
+
 html.theme-high-contrast .el-button--primary {
   background: #4ade80;
   color: #000000;
@@ -721,3 +816,164 @@ html.theme-high-contrast .voice-fab {
   color: #000000;
 }
 
+
+/* ============================================================
+   移动端（H5）适配层 —— 断点统一为 767px
+   ------------------------------------------------------------
+   作用域原则：
+   ① 本段**只负责页面骨架**（容器宽度、顶部栏、底部 Tab 预留、
+      弹窗、表单、输入框放大防自动缩放）；
+   ② 具体的网格/卡片排版仍写在各自组件的 scoped 样式里——
+      组件样式在 global.css 之后注入，优先级天然更高，不会被这里覆盖；
+   ③ 原有 480 / 560 / 700 / 900 断点全部保留，它们都在 767 之下，
+      叠加生效，属于更细一级的微调。
+
+   为什么不做 html/body 的 overflow-x: hidden：
+      那会把根元素变成滚动容器，导致 .topbar 的 position: sticky 失效
+      （页面滚动时顶栏不再吸顶）。所以只在 main（内容区）上裁剪。
+   ============================================================ */
+@media (max-width: 767px) {
+  /* ---------- 1. 容器：全宽 + 16px 内边距 ----------
+     PC 是 width: min(1180px, 88vw)，≤800px 时被改成 min(90vw, 600px)。
+     手机上一律 100%，两侧各留 16px（375px 屏可用宽度 343px）。 */
+  main {
+    width: 100%;
+    padding: 0 16px;
+    box-sizing: border-box;
+    /* 兜住个别超宽子元素（如固定 px 宽的卡片），避免整页左右拖动 */
+    overflow-x: hidden;
+  }
+
+  /* 底部要留出 Tab 栏高度 + iPhone 安全区，否则最后一屏内容会被压住 */
+  .page {
+    padding: 20px 0 calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ---------- 2. 字体：标题缩小防换行，正文保持可读 ---------- */
+  .page-title {
+    /* PC 是 clamp(32px, 4.6vw, 56px)，在 375px 上 4.6vw≈17px→取 32px 仍偏大 */
+    font-size: 26px;
+    line-height: 1.25;
+    margin: 10px 0 14px;
+    letter-spacing: -0.2px;
+  }
+
+  .lead {
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  /* ---------- 3. 输入框：16px 是 iOS 的分水岭 ----------
+     字号 < 16px 时，Safari / 微信内置浏览器会在聚焦时强制放大页面，
+     且失焦后不一定缩回，用户会看到"页面突然变大"。这条是移动端必做。 */
+  .el-input__inner,
+  .el-textarea__inner,
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* ---------- 4. 弹窗：自适应宽度 + 顶部对齐 ----------
+     Element Plus 默认 width: 50%，375px 屏上只有 187px。
+     用 !important 是因为 EP 会往 .el-dialog 上打行内 width。 */
+  .el-dialog {
+    width: 92vw !important;
+    max-width: 92vw !important;
+    margin: 10vh auto 0 !important;
+    border-radius: 16px;
+  }
+
+  .el-dialog__body {
+    padding: 16px !important;
+    /* 长内容不能把弹窗顶出屏幕：限制高度并内部滚动 */
+    max-height: 68vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .el-dialog__header {
+    padding: 16px 16px 8px !important;
+  }
+
+  .el-dialog__footer {
+    padding: 8px 16px 16px !important;
+  }
+
+  /* 二次确认框（消息框）同理 */
+  .el-message-box {
+    width: 90vw !important;
+    max-width: 400px;
+  }
+
+  /* ---------- 5. 表单：label 改为顶部对齐 ----------
+     手机横向只剩 343px，label 占 100px 后输入区只剩 240px 以下，
+     长 label（"物品成色""联系方式"）会折行。改为上下排布。 */
+  .el-form-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .el-form-item__label {
+    width: auto !important;
+    justify-content: flex-start !important;
+    padding: 0 0 6px !important;
+    line-height: 1.4 !important;
+    text-align: left;
+  }
+
+  .el-form-item__content {
+    margin-left: 0 !important;
+  }
+
+  /* ---------- 6. 交互热区：按钮/分页/标签页 ---------- */
+  .el-button {
+    min-height: 38px;
+  }
+
+  .el-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
+  }
+
+  .el-tabs__item {
+    padding: 0 12px !important;
+  }
+
+  /* ---------- 7. 消息提示：宽度自适应，别贴边 ---------- */
+  .el-message {
+    width: calc(100vw - 32px) !important;
+    min-width: 0 !important;
+  }
+
+  /* ---------- 8. 页脚：Tab 栏之下不再需要大留白 ---------- */
+  .site-footer {
+    padding: 20px 16px calc(78px + env(safe-area-inset-bottom, 0px));
+    font-size: 12px;
+    text-align: center;
+  }
+}
+
+/* 超窄屏（iPhone SE 一代 / 320px）：再收紧一档。
+   注意断点取 360 而非 380——375px（iPhone SE2/12 mini/13 mini 主流宽度）
+   要保留 16px 标准边距，只有真正的 320–360 窄屏才收紧到 12px。 */
+@media (max-width: 360px) {
+  main {
+    padding: 0 12px;
+  }
+
+  .page-title {
+    font-size: 23px;
+  }
+
+  .el-dialog {
+    width: 94vw !important;
+    max-width: 94vw !important;
+  }
+}

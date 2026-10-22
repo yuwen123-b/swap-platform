@@ -1,8 +1,16 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.db.pool import connection
 from app.routers.admin.deps import ok, require_role
+# 交换完成奖励（发分 + 累加交换次数/碳减排量）已上移到 services 层，
+# 与用户侧 `PUT /api/orders/{id}/complete` 共用同一份实现，避免两套规则漂移。
+# 本文件原有的 `_reward_exchange_completion` 已删除，行为保持不变。
+from app.services.order_service import reward_exchange_completion
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -76,12 +84,27 @@ def get_order(order_id: int):
 def update_order_status(order_id: int, req: OrderStatusUpdate):
     with connection() as conn:
         with conn.cursor() as cursor:
+            # 先取旧状态与双方用户：既用于幂等判断，也用于组装奖励对象。
+            # 不判断旧值的话，反复 PUT status=3 就能反复拿奖励（刷分漏洞）。
+            cursor.execute(
+                "SELECT status, buyer_id, seller_id FROM `order` WHERE id=%s LIMIT 1",
+                (order_id,),
+            )
+            order = cursor.fetchone()
+            if not order:
+                raise HTTPException(404, "订单不存在")
+            previous_status = int(order.get("status") or 0)
+
             if req.status == 3:
                 cursor.execute("UPDATE `order` SET status=%s, completed_at=NOW() WHERE id=%s", (req.status, order_id))
             else:
                 cursor.execute("UPDATE `order` SET status=%s WHERE id=%s", (req.status, order_id))
             if cursor.rowcount == 0:
                 raise HTTPException(404, "订单不存在")
+
+            # 仅在「本次置为已完成」且「此前不是已完成」时发放，保证只发一次
+            if req.status == 3 and previous_status != 3:
+                reward_exchange_completion(cursor, order_id, order)
     return ok(message="订单状态已更新")
 
 

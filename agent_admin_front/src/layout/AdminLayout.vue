@@ -64,7 +64,31 @@ const menus = [
       { path: '/items/audit', title: '物品审核', roles: [1, 2, 3] },
     ],
   },
-  { path: '/orders', title: '订单管理', icon: 'Tickets', roles: [1, 2, 3] },
+  // 标题带「物品交换」以区别于「商家管理 → 兑换订单」（两套订单数据源与状态枚举完全不同）
+  { path: '/orders', title: '物品交换订单', icon: 'Tickets', roles: [1, 2, 3] },
+  {
+    path: '/merchant',
+    title: '商家管理',
+    icon: 'Shop',
+    roles: [1, 2, 3],
+    children: [
+      { path: '/merchant/list', title: '商家列表', roles: [1, 2, 3] },
+      { path: '/merchant/orders', title: '兑换订单', roles: [1, 2, 3] },
+      { path: '/merchant/settlements', title: '结算管理', roles: [1, 2, 3] },
+    ],
+  },
+  {
+    path: '/recycle',
+    title: '平台回收',
+    icon: 'RefreshLeft',
+    roles: [1, 2],
+    children: [
+      { path: '/recycle/list', title: '回收单列表', roles: [1, 2] },
+      { path: '/recycle/stock', title: '平台库存', roles: [1, 2] },
+      { path: '/recycle/sales', title: '销售记录', roles: [1, 2] },
+      { path: '/recycle/stats', title: '运营数据看板', roles: [1, 2] },
+    ],
+  },
   {
     path: '/community',
     title: '社区管理',

@@ -16,6 +16,7 @@ dependencies = [
   "requests>=2.31.0",
   "openai>=3.28.0",
   "pillow>=12.3.0",
+  "mcp>=2.3.0",
 ]
 
 [tool.uv]

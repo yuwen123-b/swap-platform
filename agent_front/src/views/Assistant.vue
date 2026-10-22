@@ -48,7 +48,7 @@
           >
             <span class="msg-avatar" :class="msg.role">{{ msg.role === 'user' ? '我' : 'AI' }}</span>
             <div class="msg-bubble">
-              <span class="msg-text">{{ msg.content }}</span>
+              <span class="msg-text" v-html="renderContent(msg.content)"></span>
               <span v-if="msg.streaming" class="cursor">▍</span>
             </div>
           </div>
@@ -86,7 +86,11 @@
   margin: 12px auto 0;
   padding: 0 24px;
   /* 顶部导航(72px + 12px 外边距)之外铺满剩余视口，保证聊天区内部滚动 */
+  /* 先写 vh 兜底，再用 --app-vvh（visualViewport 实时值）覆盖：
+     手机上键盘弹起时 --app-vvh 会变小，整个聊天容器随之收缩，
+     输入区始终留在可视区内。PC 上没有键盘，两者等价。 */
   height: calc(100vh - 108px);
+  height: calc(var(--app-vvh, 100dvh) - 108px);
   display: flex;
   flex-direction: column;
   background:
@@ -304,6 +308,15 @@
   box-shadow: 0 4px 14px rgba(31, 35, 41, 0.04);
 }
 
+/* AI 返回的图表图片 */
+.chart-img {
+  display: block;
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 8px 0 4px;
+  border: 1px solid var(--line, #eef0f5);
+}
+
 .cursor {
   display: inline-block;
   margin-left: 2px;
@@ -364,10 +377,110 @@
     font-size: 1.25rem;
   }
 }
+
+/* ============================================================
+   移动端（≤767px）
+   要点：整页高度 = 真实可视区 − 顶栏(56) − 底部 Tab(54) − 余量(6)
+        用 --app-vvh（由 visualViewport 写入），键盘弹起时容器同步收缩，
+        输入区不会被盖住；不依赖任何 JS 定位。
+   ============================================================ */
+@media (max-width: 767px) {
+  .container {
+    /* main 已提供左右 16px，这里不再叠加，避免聊天区被压到 311px */
+    padding: 0;
+    margin-top: 0;
+    height: calc(100vh - 116px);
+    height: calc(var(--app-vvh, 100dvh) - 116px);
+  }
+
+  .as-header {
+    padding: 10px 0 8px;
+  }
+
+  .as-title {
+    font-size: 17px;
+    letter-spacing: 1px;
+  }
+
+  .as-sub {
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .chat-inner {
+    gap: 14px;
+    padding: 14px 0;
+  }
+
+  /* 手机上气泡放宽到 86%：72% 会让长句频繁折行 */
+  .msg-bubble {
+    max-width: 86%;
+    padding: 10px 13px;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .sender {
+    margin-bottom: 8px;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .send-btn {
+    min-width: 64px;
+    padding: 0 12px;
+  }
+
+  .preset-grid {
+    gap: 10px;
+  }
+}
 </style>
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+/* ---------- 移动端键盘适配 ----------
+   问题：iOS Safari 弹起键盘时**不会**缩小 100vh/100dvh，底部输入区会被键盘盖住；
+        Android 会缩小 layout viewport，100vh 反而"够用"。
+   做法：用 visualViewport.height（= 真实可视区高度，键盘会扣掉）写进 CSS 变量
+        --app-vvh，样式里用它算容器高度。不存在 visualViewport 的老浏览器自动回落 100dvh。
+   注意：必须监听 resize 与 scroll（iOS 在键盘弹起时会顺带滚动视口）。 */
+function syncViewportHeight() {
+  const vv = window.visualViewport
+  if (!vv) return
+  document.documentElement.style.setProperty('--app-vvh', `${Math.round(vv.height)}px`)
+}
+
+onMounted(() => {
+  if (!window.visualViewport) return
+  syncViewportHeight()
+  window.visualViewport.addEventListener('resize', syncViewportHeight)
+  window.visualViewport.addEventListener('scroll', syncViewportHeight)
+})
+
+onBeforeUnmount(() => {
+  if (!window.visualViewport) return
+  window.visualViewport.removeEventListener('resize', syncViewportHeight)
+  window.visualViewport.removeEventListener('scroll', syncViewportHeight)
+})
+
+// 把消息文本中的 markdown 图片 ![alt](url) 渲染为 <img>，其余文本转义防 XSS
+function renderContent(text) {
+  if (!text) return ''
+  // 1. 先转义所有 HTML 特殊字符
+  const escaped = String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+  // 2. 转义后 ![alt](https://...) 形式还原为 <img>
+  return escaped.replace(
+    /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g,
+    (m, alt, url) => `<img src="${url}" alt="${alt}" class="chart-img" />`,
+  )
+}
 
 // 预设问题（点击即发送，复用 inputEnter 逻辑）；computed 保证切换语言时响应式更新
 const presetQuestions = computed(() => [
@@ -393,8 +506,17 @@ function scrollToBottom() {
 }
 
 function clearConfirm() {
-  //清空历史对话记录
-  chatList.value = []
+  // 清空会丢失本次全部对话且不可恢复：先二次确认
+  // （原实现函数名叫 confirm，实际却直接清空，属误触即丢数据的隐患）
+  ElMessageBox.confirm('清空后将无法恢复本次对话记录。', '确定清空对话？', {
+    confirmButtonText: '清空',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+    .then(() => {
+      chatList.value = []
+    })
+    .catch(() => {})
 }
 
 //点击预设问题：填入输入框并复用 inputEnter 发送

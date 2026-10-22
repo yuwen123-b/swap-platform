@@ -18,7 +18,8 @@ PHONE_PATTERN = re.compile(r"^1\d{10}$")
 
 def target_meta(target_type: str, scene: str) -> tuple[int, int]:
     types = {"email": 1, "phone": 2}
-    scenes = {"register": 1, "login": 2, "reset": 3}
+    # bind=4：换绑手机/邮箱场景（见 app/api/v1/user.py 的 _SCENE_BIND）
+    scenes = {"register": 1, "login": 2, "reset": 3, "bind": 4}
     if target_type not in types or scene not in scenes:
         raise HTTPException(400, "验证码类型或场景无效")
     return types[target_type], scenes[scene]

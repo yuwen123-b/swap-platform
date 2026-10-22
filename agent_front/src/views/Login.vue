@@ -8,8 +8,8 @@
         <!-- 验证码登录 -->
         <el-tab-pane label="验证码登录" name="code">
           <el-radio-group v-model="codeType" class="mode-switch">
-            <el-radio-button label="phone">手机号</el-radio-button>
-            <el-radio-button label="email">邮箱</el-radio-button>
+            <el-radio-button value="phone">手机号</el-radio-button>
+            <el-radio-button value="email">邮箱</el-radio-button>
           </el-radio-group>
 
           <el-form @submit.prevent="loginCode">

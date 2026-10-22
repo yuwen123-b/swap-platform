@@ -1,37 +1,6 @@
 <template>
   <div class="app-shell" :class="profileStore.rootClasses">
-    <header class="topbar">
-      <RouterLink to="/" class="brand">
-        <span class="brand-mark">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 4C20 4 8.5 4 5 7.5C2.5 10 4 13.5 4 13.5C4 13.5 7.5 15 10 12.5C13.5 9 20 4 20 4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 20C4 20 6 14.5 10 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span>闲物<span class="cyan">焕新</span></span>
-      </RouterLink>
-
-      <nav class="topnav">
-        <RouterLink to="/items">探索物品</RouterLink>
-        <RouterLink to="/recognition">物品识别</RouterLink>
-        <RouterLink to="/pricing">智能定价</RouterLink>
-        <RouterLink to="/reviews">社区评价</RouterLink>
-        <RouterLink to="/assistant">智能体助手</RouterLink>
-        <RouterLink to="/messages">我的私信</RouterLink>
-      </nav>
-
-      <div class="account">
-        <template v-if="userStore.isLoggedIn">
-          <RouterLink to="/profile" class="profile-link">个人中心</RouterLink>
-          <span class="user-name">{{ userStore.user?.nickname || '居民' }}</span>
-          <el-button link @click="userStore.logout">退出</el-button>
-        </template>
-        <template v-else>
-          <RouterLink to="/login">登录</RouterLink>
-          <RouterLink to="/register" class="signup">加入社区</RouterLink>
-        </template>
-      </div>
-    </header>
+    <AppNav />
 
     <main>
       <RouterView />
@@ -77,6 +46,7 @@
 
 <script setup>
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import AppNav from '../components/AppNav.vue'
 import { useUserStore } from '../store/user'
 import { useProfileStore } from '../store/profile'
 
@@ -88,15 +58,6 @@ userStore.hydrate()
 </script>
 
 <style scoped>
-.profile-link {
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(47, 133, 90, 0.35);
-  color: var(--green-primary, #2f855a);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
 .voice-fab {
   position: fixed;
   left: 26px;
@@ -164,16 +125,27 @@ userStore.hydrate()
   box-shadow: 0 12px 26px rgba(47, 133, 90, 0.35);
 }
 
-@media (max-width: 1100px) {
-  .topnav {
-    gap: 14px;
+/* ---------- 移动端：两个悬浮按钮与底部 Tab 栏避让 ----------
+   ① .back-home 隐藏：底部 Tab 的「探索」就是主入口，Logo 也能回首页，
+      再留一个悬浮"首页"会和 Tab 栏叠在一起，反而挡住内容。
+   ② .voice-fab 上移到 Tab 栏之上（54px 栏高 + 12px 间隙），
+      只在开启助老模式时出现，不挡内容区。 */
+@media (max-width: 767px) {
+  .back-home {
+    display: none;
   }
-}
 
-@media (max-width: 900px) {
-  .topnav {
-    gap: 8px;
-    flex-wrap: wrap;
+  .voice-fab {
+    left: 14px;
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+    min-width: 58px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .voice-fab svg {
+    width: 20px;
+    height: 20px;
   }
 }
 </style>

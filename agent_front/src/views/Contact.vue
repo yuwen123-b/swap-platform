@@ -69,6 +69,10 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { submitFeedback as submitFeedbackApi } from '../api/user'
+import { useUserStore } from '../store/user'
+
+const userStore = useUserStore()
 
 const form = reactive({
   name: '',
@@ -78,18 +82,43 @@ const form = reactive({
 
 const submitting = ref(false)
 
+const SUPPORT_EMAIL = 'support@xianwu-huanxin.com'
+
+// 降级方案：无法调用接口（未登录 / 请求失败）时，改用邮件客户端发送
+function fallbackToMailto() {
+  const subject = encodeURIComponent(`【留言反馈】${form.name.trim()}`)
+  const body = encodeURIComponent(
+    `姓名：${form.name.trim()}\n联系方式：${form.contact.trim()}\n\n${form.message.trim()}`,
+  )
+  window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`
+  ElMessage.info('已为你打开邮件客户端，请直接发送')
+}
+
 async function submitFeedback() {
   if (!form.name.trim() || !form.contact.trim() || !form.message.trim()) {
     ElMessage.warning('请填写完整姓名、联系方式与留言内容')
     return
   }
 
-  // TODO: 后续接入留言反馈接口（POST /api/v1/feedback），当前先做前端提交反馈
+  // 复用个人中心的反馈接口 POST /user/feedback（user_feedback 表）：
+  // 姓名并入留言内容，联系方式作为 contact 字段；不为此功能新建任何表。
+  if (!userStore.isLoggedIn) {
+    fallbackToMailto()
+    return
+  }
+
   submitting.value = true
   try {
-    await new Promise((resolve) => setTimeout(resolve, 600))
+    await submitFeedbackApi({
+      content: `【${form.name.trim()}】${form.message.trim()}`.slice(0, 500),
+      contact: form.contact.trim(),
+    })
     ElMessage.success('留言已提交，感谢你的反馈！我们会尽快回复你 🌿')
     Object.assign(form, { name: '', contact: '', message: '' })
+  } catch (error) {
+    // 401 已由请求拦截器跳转登录，这里只在其它失败时走邮件兜底
+    if (error?.response?.status === 401) return
+    fallbackToMailto()
   } finally {
     submitting.value = false
   }
