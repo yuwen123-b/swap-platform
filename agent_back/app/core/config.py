@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     db_password: str = ""
     db_name: str = "swap"
     db_charset: str = "utf8mb4"
+    # 云数据库强制 TLS（如 Aiven MySQL）：true 时启用 SSL 连接
+    db_ssl: bool = False
+    # CA 证书路径（Aiven 控制台可下载 ca.pem）。提供时走 VERIFY_IDENTITY 级校验；
+    # 留空则只加密不校验证书（等效 ssl_mode=REQUIRED）
+    db_ssl_ca: str = ""
     db_pool_min_cached: int = 1
     db_pool_max_cached: int = 5
     db_pool_max_connections: int = 20

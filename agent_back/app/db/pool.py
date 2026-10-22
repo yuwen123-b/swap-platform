@@ -13,7 +13,8 @@ SQL_DIR = Path(__file__).resolve().parents[2] / "sql"
 
 @lru_cache
 def get_pool() -> PooledDB:
-    return PooledDB(
+    # 连接参数集中组装：本地 MySQL 与云数据库（Aiven 等）共用同一入口
+    kwargs = dict(
         creator=pymysql,
         maxconnections=settings.db_pool_max_connections,
         mincached=settings.db_pool_min_cached,
@@ -29,6 +30,16 @@ def get_pool() -> PooledDB:
         autocommit=False,
         connect_timeout=settings.db_connect_timeout,
     )
+    if settings.db_ssl:
+        if settings.db_ssl_ca:
+            # 提供 CA 证书：双向校验（加密 + 服务端身份验证），Aiven 推荐级别
+            kwargs["ssl"] = {"ca": settings.db_ssl_ca, "check_hostname": True}
+        else:
+            # 只加密不校验证书（等效 ssl_mode=REQUIRED）：
+            # pymysql 的 ssl dict 只要有键即启用 TLS；check_hostname=False 免去无 CA 时的报错
+            kwargs["ssl"] = {"check_hostname": False}
+        logger.info("数据库 SSL 已启用（ca=%s）", settings.db_ssl_ca or "未提供，仅加密")
+    return PooledDB(**kwargs)
 
 
 @contextmanager

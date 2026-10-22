@@ -50,7 +50,8 @@ app.add_middleware(
     allow_origins=settings.cors_origin_list,
     allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    # 方法/头用通配：credentials 冲突的只有 origin 通配（此处走「显式列表+regex 回显」，不受影响）
+    allow_methods=["*"],
     allow_headers=["*"],
     max_age=600,
 )
