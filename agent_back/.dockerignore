@@ -1,0 +1,15 @@
+# 构建上下文瘦身 + 防止本地密钥进入镜像
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+tests/
+docs/
+uploads/
+certs/
+*.md
+Dockerfile
+.dockerignore
