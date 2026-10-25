@@ -9,6 +9,9 @@ const request = axios.create({
 })
 
 request.interceptors.request.use((config) => {
+  // ngrok 免费版对「像浏览器」的请求返回 200+HTML 拦截页（无 CORS 头），
+  // 此头可跳过（生产环境走 _worker.js 同源代理时无副作用，双保险）
+  config.headers['ngrok-skip-browser-warning'] = 'true'
   const token = localStorage.getItem('admin_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
